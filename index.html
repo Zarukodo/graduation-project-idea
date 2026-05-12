@@ -19,7 +19,6 @@
             --shadow-grey: #424874;   
         }
 
-        /* 【核心修復 1】：強制關閉手機瀏覽器的字體自動放大機制 (Font Boosting) */
         html, body {
             -webkit-text-size-adjust: 100%;
             text-size-adjust: 100%;
@@ -30,7 +29,7 @@
             color: var(--cream);
             font-family: 'Noto Serif TC', serif;
             font-weight: 300;
-            font-size: 22px; /* 設定全域基準字號，穩定比例尺 */
+            font-size: 22px; 
         }
 
         .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
@@ -87,27 +86,28 @@
             font-family: 'Inter', sans-serif;
         }
 
-        /* 終極滾輪與裁切防禦機制 */
         .reveal .slides {
             height: 100% !important;
             width: 100% !important;
             inset: 0 !important;
         }
 
-        .reveal .slides > section, 
+        /*.reveal .slides > section, */
         .reveal .slides > section > section {
             display: flex !important;
             flex-direction: column !important;
-            justify-content: flex-start !important;
+            justify-content: center !important;
             align-items: center !important;
             min-height: 100dvh !important; 
-            height: auto !important;
-            overflow-y: auto !important;
+            /*height: auto !important;*/
+            /*overflow-y: auto !important;*/
             top: 0 !important; 
             box-sizing: border-box;
             padding: 80px 15px 100px 15px !important;
             scrollbar-width: none; 
             -ms-overflow-style: none;
+            touch-action: pan-y pinch-zoom;
+            overscroll-behavior-y: contain; 
         }
         
         .reveal .slides > section::-webkit-scrollbar, 
@@ -168,7 +168,7 @@
             align-items: center;
             justify-content: center;
             transition: all 0.2s ease;
-            flex-shrink: 0; /* 【核心修復 2】：禁止按鈕被擠壓變形 */
+            flex-shrink: 0; 
         }
 
         .btn-3d:active {
@@ -190,7 +190,7 @@
             font-weight: 600;
             margin: 0 15px;
             border-radius: 8px;
-            flex-shrink: 0; /* 禁止數字框被擠壓 */
+            flex-shrink: 0; 
             text-shadow: 0 0 10px rgba(220, 214, 247, 0.5);
         }
 
@@ -214,15 +214,10 @@
             max-width: 90%;
         }
 
-        /* 【核心修復 3】：針對手機螢幕的強制鎮壓 (RWD) */
         @media screen and (max-width: 768px) {
             .reveal { font-size: 16px; }
-            
-            /* 強制壓制第一頁被行內樣式撐爆的標題 */
             .reveal h1[style] { font-size: 2.5rem !important; margin-top: 5vh !important; }
             .reveal h3[style] { font-size: 1.2rem !important; }
-            
-            /* 讓提案人名單不要撞在一起 */
             .reveal div[style*="margin-top: 60px"] { margin-top: 30px !important; }
 
             .content-card {
@@ -231,14 +226,13 @@
             }
 
             .glass-hint { font-size: 0.8rem; padding: 12px 20px; }
-            
             .chapter-label { top: 15px; left: 15px; font-size: 0.6rem; }
             .control-hint { bottom: 10px; right: 10px; font-size: 0.55rem; }
 
-            /* 釋放樹狀圖 600px 的硬限制，讓它在手機上能彈性縮放 */
             #tree-chart {
-                height: 55vh !important;
-                min-height: 350px !important;
+                height: calc(100dvh - 280px) !important;
+                min-height: 400px !important; 
+                visibility: visible !important;
             }
         }
     </style>
@@ -445,24 +439,25 @@
         const revealInstance = new Reveal();
         
         revealInstance.initialize({
-            disableLayout: true, // 【修復點】：阻擋 Reveal.js 強制縮放，讓響應式 CSS 完全接管
+            disableLayout: true, 
             navigationMode: 'grid',
             controls: false,
             progress: true,
-            center: false, // 關閉置中，配合 CSS 讓長內容自然由上往下排
+            center: false, 
             hash: false,
             transition: 'convex',
-            touch: true,
+            touch: true, 
             keyboard: false 
         }).then(() => {
             currentH = revealInstance.getIndices().h;
             updateLabel();
         });
 
-        // 垂直記憶邏輯
-        revealInstance.on('slidechanged', event => {
+
+       revealInstance.on('slidechanged', event => {
             if (isAutoJumping) { isAutoJumping = false; return; }
             const idx = revealInstance.getIndices();
+            
             if (idx.h !== currentH) {
                 const targetV = verticalMemory[idx.h] || 0;
                 if (idx.v !== targetV) {
@@ -477,27 +472,98 @@
                 verticalMemory[idx.h] = idx.v;
             }
             updateLabel();
-
-            // --- 樹狀圖防消失機制 ---
-            if (event.currentSlide.querySelector('#tree-chart')) {
+            
+            // --- 【樹狀圖終極修復核心區】 ---
+            if (event.currentSlide.querySelector('#tree-chart') && window.myChart && window.chartBaseOption) {
+                // 等待 600ms，確保 Reveal.js 的過渡動畫完全結束，容器尺寸已經穩定
                 setTimeout(() => {
-                    if (window.myChart) {
-                        window.myChart.resize();
-                    }
-                }, 500); 
+                    // 1. 清空因為 display: none 而壞掉的畫布殘骸
+                    window.myChart.clear();
+                    
+                    // 2. 重新注入我們在第一步備份的初始設定檔 (滿血復活)
+                    window.myChart.setOption(window.chartBaseOption);
+                    
+                    // 3. 確保它完美撐開版面
+                    window.myChart.resize();
+                    
+                    // 4. (選用) 如果你希望每次滑回來都重置展開狀態，可以加這行：
+                    // window.isTreeExpanded = false; 
+                }, 600); 
             }
         });
+
+        // --- 【手勢分流指揮所】 ---
+        let startX = 0;
+        let startY = 0;
+        let lastSwipeTime = 0; // 換頁冷卻時間鎖
+
+        const recordStart = (e) => {
+            // 忽略一般滑鼠操作，只針對觸控
+            if (e.pointerType === 'mouse') return;
+            
+            startX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+            startY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+        };
+
+        const handleSwipe = (e) => {
+            if (e.pointerType === 'mouse') return;
+    
+            // 【免死金牌】樹狀圖內完全放行
+            if (e.target.closest('#tree-chart')) return;
+
+            let endX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+            let endY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+            
+            let diffX = startX - endX; 
+            let diffY = startY - endY;
+            
+            // 判定：水平滑動且距離 > 40px
+            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 40) {
+                
+                // 攔截原生事件
+                e.stopPropagation();
+                
+                // 防抖鎖 (300ms)
+                const now = Date.now();
+                if (now - lastSwipeTime < 300) return; 
+                lastSwipeTime = now;
+
+                const idx = revealInstance.getIndices(); // 取得當前座標位置
+
+                if (diffX > 0) {
+                    // 向左滑 (動作意圖：想去右邊下一頁)
+                    if (revealInstance.availableFragments().next) {
+                        // 還有碎片沒看？執行你的「空白鍵妥協方案」：瞬間全展開！
+                        while (revealInstance.availableFragments().next) {
+                            revealInstance.nextFragment();
+                        }
+                    } else {
+                        // 碎片都看完了，強制跨越章節 (不受 Reveal 原生限制)
+                        revealInstance.slide(idx.h + 1);
+                    }
+                } else {
+                    // 向右滑 (動作意圖：想去左邊上一頁)
+                    // 回頭看不需要管碎片，直接強制跳回上一章
+                    revealInstance.slide(idx.h - 1);
+                }
+            }
+        };
+
+        // 在最頂層佈下天羅地網，同時捕捉 Touch 與 Pointer
+        window.addEventListener('touchstart', recordStart, { capture: true, passive: true });
+        window.addEventListener('pointerdown', recordStart, { capture: true, passive: true });
+
+        window.addEventListener('touchend', handleSwipe, { capture: true });
+        window.addEventListener('pointerup', handleSwipe, { capture: true });
 
         function updateLabel() {
             const h = revealInstance.getIndices().h;
             document.getElementById('current-chapter').innerText = chapterNames[h] || "ENLIGHTENMENT MENTOR";
         }
 
-        // 強制攔截滑鼠滾輪，確保長畫面能順暢滾動
         window.addEventListener('wheel', event => {
             const currentSlide = revealInstance.getCurrentSlide();
             if (currentSlide && currentSlide.scrollHeight > currentSlide.clientHeight) {
-                // 如果內容大於視窗高度，直接滾動該 slide，不觸發換頁
                 currentSlide.scrollTop += event.deltaY;
             }
         }, { passive: true });
@@ -526,7 +592,6 @@
                     revealInstance.up();
                 }
             } else if (event.code === 'Space') {
-                // 檢查當前畫面是不是樹狀圖
                 const chartSlide = document.getElementById('tree-chart').closest('section');
                 if (chartSlide && chartSlide.classList.contains('present')) {
                     if (typeof window.toggleTree === 'function') window.toggleTree();
@@ -536,7 +601,6 @@
             }
         }, { capture: true });
 
-        // 雙擊全開功能 / 手機雙擊展開樹狀圖
         window.addEventListener('dblclick', () => {
             const chartSlide = document.getElementById('tree-chart').closest('section');
             if (chartSlide && chartSlide.classList.contains('present')) {
@@ -545,14 +609,40 @@
                 while (revealInstance.availableFragments().next) revealInstance.nextFragment();
             }
         });
+
+        let lastTouchTime = 0;
+        window.addEventListener('touchstart', (e) => {
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - lastTouchTime;
+            
+            if (tapLength < 300 && tapLength > 0) {
+                const chartSlide = document.getElementById('tree-chart').closest('section');
+                if (chartSlide && chartSlide.classList.contains('present')) {
+                    if (typeof window.toggleTree === 'function') {
+                        window.toggleTree();
+                        e.preventDefault(); 
+                    }
+                } else {
+                    while (revealInstance.availableFragments().next) revealInstance.nextFragment();
+                    e.preventDefault();
+                }
+            }
+            lastTouchTime = currentTime;
+        }, { passive: false });
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             var chartDom = document.getElementById('tree-chart');
-            
-            // 掛載到 window，讓全域找得到它！
+            // --- 【學姊的事件防護罩】阻斷觸控事件冒泡，防止 Reveal.js 搶走手勢 ---
+            // 把所有可能觸發滑動的事件通通攔截下來
+            ['touchstart', 'touchmove', 'touchend', 'pointerdown', 'pointermove'].forEach(evt => {
+                chartDom.addEventListener(evt, function(e) {
+                    e.stopPropagation(); // 關鍵：停止事件向上傳遞！
+                }, { passive: false });
+            });
+            // ----------------------------------------------------------
             window.myChart = echarts.init(chartDom);
             
             var treeData = {
@@ -649,7 +739,7 @@
             var option = {
                 tooltip: {
                     trigger: 'item',
-                    triggerOn: 'mousemove',
+                    triggerOn: 'click', 
                     backgroundColor: 'rgba(66, 72, 116, 0.95)',
                     borderColor: '#a6b1e1',
                     borderWidth: 1,
@@ -719,11 +809,20 @@
                     }
                 ]
             };
+            window.chartBaseOption = option;
 
-            // 用 window.myChart 來設定初始選項
             window.myChart.setOption(option);
 
-            // --- 1. 樹狀圖全展開/收合核心邏輯 ---
+            if (window.ResizeObserver) {
+                new ResizeObserver((entries) => {
+                    // 只有當容器的寬高確實大於 0（代表畫面真正顯示在螢幕上）時，才允許重繪！
+                    if (entries[0].contentRect.width > 0 && entries[0].contentRect.height > 0) {
+                        if (window.myChart) {
+                            window.myChart.resize();
+                        }
+                    }
+                }).observe(chartDom);
+            }
             let isTreeExpanded = false; 
             window.toggleTree = function() {
                 isTreeExpanded = !isTreeExpanded;
@@ -738,7 +837,6 @@
                 window.myChart.setOption({ series: [{ data: [treeData] }] });
             };
 
-            // --- 2. 字體縮放邏輯 (對齊預設值 15) ---
             let currentFontSize = 15; 
             function updateChartFont() {
                 document.getElementById('font-size-val').innerText = currentFontSize;
@@ -760,7 +858,6 @@
                 if (currentFontSize > 9) { currentFontSize -= 1; updateChartFont(); }
             });
 
-            window.addEventListener('resize', function() { window.myChart.resize(); });
         });
     </script>
 </body>

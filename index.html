@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>畢業專題「人生啟蒙導師」</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400&family=Inter:wght@300;400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {
+            --steel-blue: #cacfd6;    
+            --pacific-blue: #dcd6f7;  
+            --cream: #d6e5e3;         
+            --forest-green: #a6b1e1;  
+            --shadow-grey: #424874;   
+        }
+
+        .reveal {
+            background-color: var(--shadow-grey);
+            color: var(--cream);
+            /* 套用細體襯線字 */
+            font-family: 'Noto Serif TC', serif;
+            font-weight: 300;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--cream);
+            text-transform: none;
+            /* 拿掉原本的 800 超粗體，改成 400 讓它保持細緻但清晰 */
+            font-weight: 400;
+            font-family: 'Noto Serif TC', serif;
+            letter-spacing: 2px;
+        }
+
+        .highlight { 
+            color: var(--pacific-blue); 
+            font-weight: 400; 
+            border-bottom: 1px dashed var(--pacific-blue); /* 加點細節代替粗體 */
+        }
+
+        .chapter-label {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            font-size: 0.7em;
+            color: var(--steel-blue);
+            letter-spacing: 3px;
+            z-index: 50;
+            font-family: 'Inter', sans-serif; 
+        }
+
+        /* 【修復點】：讓內容卡片在手機上也能自適應寬度 */
+        .content-card {
+            background: rgba(202, 207, 214, 0.1);
+            border-left: 2px solid var(--forest-green); 
+            padding: 25px 30px;
+            border-radius: 0 15px 15px 0;
+            text-align: left;
+            margin: 15px auto;
+            width: 90% !important;
+            max-width: 900px;
+            box-sizing: border-box;
+            font-size: 0.95em;
+            line-height: 1.6;
+        }
+
+        .reveal .controls { display: none !important; }
+
+        .control-hint {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            font-size: 0.6em;
+            color: var(--steel-blue);
+            opacity: 0.5;
+            z-index: 50;
+            text-align: right;
+            line-height: 1.5;
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* 【修復點】：終極滾輪與裁切防禦機制 (改成 dvh 與 flex 彈性佈局) */
+        .reveal .slides {
+            height: 100% !important;
+            width: 100% !important;
+            inset: 0 !important;
+        }
+
+        .reveal .slides > section, 
+        .reveal .slides > section > section {
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: flex-start !important;
+            align-items: center !important;
+            min-height: 100dvh !important; 
+            height: auto !important;
+            overflow-y: auto !important;
+            top: 0 !important; 
+            box-sizing: border-box;
+            padding: 80px 15px 100px 15px !important;
+            
+            /* 隱藏捲軸 - Firefox */
+            scrollbar-width: none; 
+            /* 隱藏捲軸 - IE/Edge */
+            -ms-overflow-style: none;
+        }
+        
+        /* 隱藏捲軸 - Chrome, Safari, Opera */
+        .reveal .slides > section::-webkit-scrollbar, 
+        .reveal .slides > section > section::-webkit-scrollbar {
+            display: none;
+        }
+        
+        /* 最後一個章節及其內頁內容：強制水平且垂直居中 */
+        .reveal .slides > section:last-child,
+        .reveal .slides > section:last-child section {
+            justify-content: center !important; /* 垂直居中 */
+            text-align: center !important;      
+            padding-top: 0 !important;          /* 拿掉前面的頂部防裁切留白 */
+            padding-bottom: 0 !important;
+        }
+        
+        /* --- 樹狀圖專屬 UI 升級 --- */
+        .ui-controls-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            margin-top: 15px;
+            padding-bottom: 40px; /* 【修復點】：底部安全留白，避免手機切斷 */
+            position: relative;
+            z-index: 100;
+            width: 100%;
+        }
+
+        .font-control-wrapper {
+            display: flex;
+            align-items: center;
+            background: rgba(66, 72, 116, 0.6);
+            padding: 10px 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(166, 177, 225, 0.2);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+            flex-wrap: wrap; /* 允許小螢幕折行 */
+            justify-content: center;
+        }
+
+        .font-control-label {
+            font-size: 0.85em;
+            color: var(--cream);
+            margin-right: 15px;
+            font-weight: 300;
+        }
+
+        /* 立體 3D 按鈕 */
+        .btn-3d {
+            background: linear-gradient(145deg, #4b5284, #3f456f);
+            box-shadow: 4px 4px 8px #353a5d, -4px -4px 8px #4f568b;
+            border: none;
+            color: var(--cream);
+            border-radius: 10px;
+            width: 42px;
+            height: 42px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .btn-3d:active {
+            box-shadow: inset 3px 3px 6px #353a5d, inset -3px -3px 6px #4f568b;
+            transform: scale(0.95);
+        }
+
+        /* 數位滾輪顯示窗 */
+        .dial-display {
+            background: #1a1c2e;
+            box-shadow: inset 3px 3px 7px #0d0e17, inset -3px -3px 7px #272a45;
+            color: var(--pacific-blue);
+            width: 55px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2em;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            margin: 0 15px;
+            border-radius: 8px;
+            text-shadow: 0 0 10px rgba(220, 214, 247, 0.5);
+        }
+
+        /* 【修復點】：玻璃擬態提示框 (允許換行與安全行高) */
+        .glass-hint {
+            background: rgba(214, 229, 227, 0.05); 
+            backdrop-filter: blur(12px); 
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(166, 177, 225, 0.2);
+            border-radius: 25px;
+            padding: 10px 25px;
+            color: var(--steel-blue);
+            font-size: 0.7em;
+            letter-spacing: 1px;
+            line-height: 1.6;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            flex-wrap: wrap; 
+            max-width: 90%;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="chapter-label" id="current-chapter">THE SPARK</div>
+    <div class="control-hint">
+        [左右] 章節切換 | [上下/滾輪] 逐項展開或畫面滾動<br>
+        [空白鍵 / 雙擊] 一鍵展開本頁全內容
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+
+            <section>
+                <section data-background-gradient="linear-gradient(135deg, #424874 0%, #a6b1e1 100%)">
+                    <p style="letter-spacing: 0.5em; color: var(--cream); opacity: 0.8; font-family: 'Inter', sans-serif; font-size: 0.6em;">GRADUATION PROJECT</p>
+                    <h1 style="font-size: 2.8em; margin-bottom: 0.2em;">人生啟蒙導師</h1>
+                    <h3 style="color: var(--pacific-blue); font-weight: 300;">解構現實，開啟興趣</h3>
+                    <div style="margin-top: 60px; font-size: 0.8em; color: var(--cream); opacity: 0.8;">
+                        提案人：郭泉宏、李康丞、張睿恆、吳修岳
+                    </div>
+                </section>
+                <section>
+                    <h3>那個「等了十年」的夢想</h3>
+                    <div class="content-card fragment">
+                        <p>小時候看著家裡的電器運轉，總想知道為什麼會轉，卻不知道這叫「電機」，更沒人引路。</p>
+                    </div>
+                    <div class="content-card fragment">
+                        <p><span class="highlight">這份渴望在體制內整整等了十年，直到大學才被開啟。</span></p>
+                    </div>
+                </section>
+                <section>
+                    <h3>找到興趣，發展興趣</h3>
+                    <div class="content-card fragment">
+                        <p>在體制內，我們常常被要求按照既定的路徑學習，卻很少有機會去探索自己真正感興趣的領域。</p>
+                    </div>
+                    <div class="content-card fragment">
+                        <p><span class="highlight">你不需要會問問題，只需要有好奇心</span></p>
+                    </div>
+                </section>
+            </section>
+
+            <section>
+                <section>
+                    <h2>Chapter 01<br>痛點分析</h2>
+                    <p class="highlight" style="border:none;">為什麼好奇心在體制內會消失？</p>
+                    <i class="fa-solid fa-chevron-down" style="margin-top: 50px; color: var(--forest-green); opacity: 0.7;"></i>
+                </section>
+                <section>
+                    <h3>知識與現實的斷層</h3>
+                    <div class="content-card fragment">
+                        <p>● <span class="highlight">難以連結：</span>看見豐富的生活場景，卻無法與學科知識建立有效連結。</p>
+                    </div>
+                    <div class="content-card fragment">
+                        <p>● <span class="highlight">資訊碎片化：</span>現有的搜尋工具給予的往往是片面且雜亂的資料。</p>
+                    </div>
+                </section>
+                <section>
+                    <h3>孤獨的摸索之路</h3>
+                    <div class="content-card fragment">
+                        <p>● <span class="highlight">挫折感高：</span>缺乏漸進式路徑引導，熱情容易在繁雜細節中被消磨。</p>
+                    </div>
+                    <div class="content-card fragment">
+                        <p>● 自學的路過於孤獨，缺少能夠隨時陪伴並指引方向的引路人。</p>
+                    </div>
+                </section>
+            </section>
+
+            <section>
+                <section>
+                    <h2>Chapter 02<br>核心方案</h2>
+                    <p class="highlight" style="border:none;">陪伴式漸進探索：做一個降低門檻的「啟蒙者」</p>
+                </section>
+                <section>
+                    <h3>導師的分寸感</h3>
+                    <div class="content-card fragment">
+                        <p>● 不強灌深奧理論，而是擅長引導你<span class="highlight">跨出第一步</span>。</p>
+                    </div>
+                    <div class="content-card fragment">
+                        <p>● 在你卡關時，才給予精準的陪伴與資源指引。</p>
+                    </div>
+                </section>
+                <section>
+                    <h3>互動成長迴圈 (Loop)</h3>
+                    <div class="content-card fragment">
+                        <p>1. <span class="highlight">視覺解構：</span>AI 看懂眼前物品，分析可能的多元領域。</p>
+                    </div>
+                    <div class="content-card fragment">
+                        <p>2. <span class="highlight">提問與分歧：</span>拋出選擇，把學習的自主權還給你。</p>
+                    </div>
+                    <div class="content-card fragment">
+                        <p>3. <span class="highlight">專家引路：</span>從微小任務破冰，最終對接高階開源資源。</p>
+                    </div>
+                </section>
+            </section>
+
+            <section>
+                <section>
+                    <h2>Chapter 03<br>情境展示</h2>
+                    <p>實戰演示：當你拍下一支手錶</p>
+                </section>
+                <section>
+                    <h3>Lv.1 啟蒙期（觀察）</h3>
+                    <div class="content-card fragment">
+                        <p>● <span class="highlight">導師行動：</span>解析結構後，把發球權交還給你。</p>
+                    </div>
+                    <div class="content-card fragment">
+                        <p>● <span class="highlight">提問引導：</span>「你想先探索『機械齒輪』，還是『電子顯示』？」</p>
+                    </div>
+                </section>
+                <section>
+                    <h3>Lv.2 探索期（分支實作）</h3>
+                    <div class="content-card fragment">
+                        <p>● 假設選擇了<span class="highlight">【電子顯示】</span>。</p>
+                    </div>
+                    <div class="content-card fragment">
+                        <p>● <span class="highlight">派發任務：</span>「去買個 RTC 時鐘模組，試著用微控制器寫出你的第一個計時程式。」</p>
+                    </div>
+                </section>
+                <section>
+                    <h3>Lv.3 創客期（資源接軌）</h3>
+                    <div class="content-card fragment">
+                        <p>● 當你完成基礎實作，渴望更進一步時。</p>
+                    </div>
+                    <div class="content-card fragment">
+                        <p>● <span class="highlight">遞上階梯：</span>導師退居二線，引導你研究 GitHub 的 Open Smartwatch 專業開源架構。</p>
+                    </div>
+                </section>
+            </section>
+
+            <section>
+                <section>
+                    <div id="tree-chart" style="width: 100%; max-width: 1000px; height: calc(100dvh - 280px); min-height: 400px; margin: 0 auto; background: rgba(202, 207, 214, 0.05); border-radius: 15px; border: 1px solid var(--forest-green);"></div>
+                    
+                    <div class="ui-controls-container">
+                        
+                        <div class="font-control-wrapper">
+                            <span class="font-control-label">樹狀圖字體縮放</span>
+                            <button id="font-decrease" class="btn-3d"><i class="fa-solid fa-minus"></i></button>
+                            <div class="dial-display"><span id="font-size-val">15</span></div>
+                            <button id="font-increase" class="btn-3d"><i class="fa-solid fa-plus"></i></button>
+                        </div>
+
+                        <div class="glass-hint">
+                            <i class="fa-regular fa-lightbulb" style="color: var(--pacific-blue); margin-right: 5px;"></i>
+                            桌機按 [空白鍵] 或 手機 [雙擊畫面] 可一鍵展開/收合全部
+                        </div>
+
+                    </div>
+                </section>
+            </section>
+
+            <section>
+                <section>
+                    <h2>Chapter 04<br>工程實踐</h2>
+                    <p class="highlight" style="border:none;">Vibe Coding：如何用 AI 團隊快速實踐教育理想</p>
+                </section>
+                <section>
+                    <h3>技術中樞 (Tech Stack)</h3>
+                    <div class="content-card fragment">
+                        <p>● <span class="highlight">主腦決策：</span>Gemini 1.5 Pro</p>
+                    </div>
+                    <div class="content-card fragment">
+                        <p>● <span class="highlight">即時檢索：</span>Tavily Search API</p>
+                    </div>
+                    <div class="content-card fragment">
+                        <p>● <span class="highlight">介面建構：</span>Next.js + Shadcn/UI</p>
+                    </div>
+                </section>
+                <section>
+                    <h3>安全、穩定與效率</h3>
+                    <div class="content-card fragment">
+                        <p>● 透過 AI 代理執行 <span class="highlight">OWASP 安全審計</span>，並藉由 Cloudflare 確保邊緣部署效能。</p>
+                    </div>
+                    <div class="content-card fragment">
+                        <p>● <span class="highlight">核心價值：</span>將多數的開發精力，還給最關鍵的「教育路徑設計」。</p>
+                    </div>
+                </section>
+            </section>
+
+            <section>
+                <section data-background-color="var(--steel-blue)">
+                    <h1 style="color: var(--shadow-grey);">讓好奇心不再等待</h1>
+                    <p style="color: var(--shadow-grey); font-weight: 300;">把世界變成你的實驗室</p>
+                </section>
+                <section>
+                    <h2>Q & A</h2>
+                    <p class="highlight" style="border:none;">感謝聆聽，期待交流</p>
+                </section>
+            </section>
+
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.js"></script>
+    <script>
+        let verticalMemory = {};
+        let currentH = 0;
+        let isAutoJumping = false;
+        const chapterNames = ["CH0: THE SPARK", "CH1: PAIN POINTS", "CH2: SOLUTION", "CH3: SCENARIO", "Architecture Tree" ,"CH4: WORKFLOW", "CH5: VISION"];
+
+        const revealInstance = new Reveal();
+        
+        revealInstance.initialize({
+            disableLayout: true, // 【修復點】：阻擋 Reveal.js 強制縮放，讓響應式 CSS 完全接管
+            navigationMode: 'grid',
+            controls: false,
+            progress: true,
+            center: false, // 關閉置中，配合 CSS 讓長內容自然由上往下排
+            hash: false,
+            transition: 'convex',
+            touch: true,
+            keyboard: false 
+        }).then(() => {
+            currentH = revealInstance.getIndices().h;
+            updateLabel();
+        });
+
+        // 垂直記憶邏輯
+        revealInstance.on('slidechanged', event => {
+            if (isAutoJumping) { isAutoJumping = false; return; }
+            const idx = revealInstance.getIndices();
+            if (idx.h !== currentH) {
+                const targetV = verticalMemory[idx.h] || 0;
+                if (idx.v !== targetV) {
+                    isAutoJumping = true;
+                    currentH = idx.h;
+                    revealInstance.slide(idx.h, targetV);
+                    updateLabel();
+                    return;
+                }
+                currentH = idx.h;
+            } else {
+                verticalMemory[idx.h] = idx.v;
+            }
+            updateLabel();
+
+            // --- 樹狀圖防消失機制 ---
+            if (event.currentSlide.querySelector('#tree-chart')) {
+                setTimeout(() => {
+                    if (window.myChart) {
+                        window.myChart.resize();
+                    }
+                }, 500); 
+            }
+        });
+
+        function updateLabel() {
+            const h = revealInstance.getIndices().h;
+            document.getElementById('current-chapter').innerText = chapterNames[h] || "ENLIGHTENMENT MENTOR";
+        }
+
+        // 強制攔截滑鼠滾輪，確保長畫面能順暢滾動
+        window.addEventListener('wheel', event => {
+            const currentSlide = revealInstance.getCurrentSlide();
+            if (currentSlide && currentSlide.scrollHeight > currentSlide.clientHeight) {
+                // 如果內容大於視窗高度，直接滾動該 slide，不觸發換頁
+                currentSlide.scrollTop += event.deltaY;
+            }
+        }, { passive: true });
+
+        window.addEventListener('keydown', event => {
+            if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) {
+                event.preventDefault();
+            }
+
+            const h = revealInstance.getIndices().h;
+
+            if (event.key === 'ArrowRight') {
+                revealInstance.slide(h + 1);
+            } else if (event.key === 'ArrowLeft') {
+                revealInstance.slide(h - 1);
+            } else if (event.key === 'ArrowDown') {
+                if (revealInstance.availableFragments().next) {
+                    revealInstance.nextFragment();
+                } else {
+                    revealInstance.down();
+                }
+            } else if (event.key === 'ArrowUp') {
+                if (revealInstance.availableFragments().prev) {
+                    revealInstance.prevFragment();
+                } else {
+                    revealInstance.up();
+                }
+            } else if (event.code === 'Space') {
+                // 檢查當前畫面是不是樹狀圖
+                const chartSlide = document.getElementById('tree-chart').closest('section');
+                if (chartSlide && chartSlide.classList.contains('present')) {
+                    if (typeof window.toggleTree === 'function') window.toggleTree();
+                } else {
+                    while (revealInstance.availableFragments().next) revealInstance.nextFragment();
+                }
+            }
+        }, { capture: true });
+
+        // 雙擊全開功能 / 手機雙擊展開樹狀圖
+        window.addEventListener('dblclick', () => {
+            const chartSlide = document.getElementById('tree-chart').closest('section');
+            if (chartSlide && chartSlide.classList.contains('present')) {
+                if (typeof window.toggleTree === 'function') window.toggleTree();
+            } else {
+                while (revealInstance.availableFragments().next) revealInstance.nextFragment();
+            }
+        });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var chartDom = document.getElementById('tree-chart');
+            
+            // 掛載到 window，讓全域找得到它！
+            window.myChart = echarts.init(chartDom);
+            
+            var treeData = {
+                name: '啟蒙導師系統',
+                children: [
+                    {
+                        name: '互動引導引擎\n(Frontend & LLM)',
+                        children: [
+                            {
+                                name: 'Phase 1: 發現\n(Discovery)',
+                                children: [
+                                    { name: '多模態解析 (Gemini)' ,
+                                      desc: 'AI 透過圖像分析，識別物品的結構與可能的相關領域，並生成多元化的探索路徑選項。' 
+                                    },
+                                    { name: '知識映射 (跨領域技能樹)' ,
+                                      desc: '將不同領域的知識進行整合與映射，形成完整的技能樹狀結構。' 
+                                    },
+                                    { name: '寫入紀錄庫 (建立探索專案)', desc: '將探索過程中的重要資訊記錄下來，便於後續分析和回顧。' }
+                                ]
+                            },
+                            {
+                                name: 'Phase 2: 啟蒙\n(Enlightenment)',
+                                children: [
+                                    { name: '狀態預設 (低難度模式)', desc: '為初學者設置較低的難度，確保學習過程的順利進行。' },
+                                    { name: '提問引擎 (蘇格拉底式)', desc: '透過引導性問題，提出多個探討方向，讓用戶選擇並思考。' },
+                                    { name: '決策收斂', desc: '等待使用者回覆，確立初步探索方向' }
+                                ]
+                            },
+                            {
+                                name: 'Phase 3: 引導學習\n(Guided Learning)',
+                                children: [
+                                    { name: '任務生成 (微型實作)', desc: '根據學習目標生成具體的學習任務。' },
+                                    { name: '資源聚合 (Tavily API)', desc: '整合多個來源的學習資源，提供全面的資訊支持。' },
+                                    { 
+                                        name: '陪伴式除錯',
+                                        children: [
+                                            { name: '視覺 Debug (硬體接線)', desc: '透過視覺化的方式協助解決硬體連接問題。' },
+                                            { name: '邏輯引導 (軟體報錯)', desc: '透過邏輯推理的方式協助解決軟體錯誤。' }
+                                        ]
+                                    },
+                                    { name: '難度動態微調', desc: '根據學習者的進度和表現，動態調整學習內容的難度。' }
+                                ]
+                            },
+                            {
+                                name: 'Phase 4: 接軌專業\n(Professional Integration)',
+                                children: [
+                                    { name: '開源對接與檢索', desc: '整合開源資源，提供全面的專業知識支持。' },
+                                    { 
+                                        name: '避坑雷達分析',
+                                        children: [
+                                            { name: '活躍度檢測', desc: '檢測資源的被使用頻率，評估其技術成熟度。' },
+                                            { name: '依賴項衝突', desc: '識別和解決項目依賴關係中的衝突問題。' },
+                                            { name: '硬體匹配度', desc: '評估硬體設備與軟體需求的匹配程度。' }
+                                        ]
+                                    },
+                                    { name: '導師預警介入', desc: '當學習者遇到重大挫折或停滯時，導師會主動介入提供支持和指導。' },
+                                    { name: '降維打擊與翻譯', desc: '將複雜的專業知識轉化為易於理解的內容，幫助學習者跨越知識鴻溝。'}
+                                ]
+                            },
+                            {
+                                name: 'Phase 5: 顧問模式\n(Fading to Consultant)',
+                                children: [
+                                    { name: '角色轉變 (關閉保母引導)', desc: '逐步減少對學習者的直接引導，鼓勵其自主探索和解決問題。' },
+                                    { name: '互動降級 (純技術顧問)', desc: '退居幕後，轉化為純技術顧問與學習經驗的回顧。' },
+                                    { name: '總結輸出 (啟蒙日誌)', desc: '整理並輸出學習過程中的重要發現和心得。' }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        name: '學習軌跡紀錄庫\n(The Repository)',
+                        children: [
+                            { name: '基礎配置 (探索紀錄)\n綁定用戶帳號的個人紀錄庫' },
+                            { 
+                                name: '隱性維度',
+                                children: [
+                                    { name: '難度變動頻率' },
+                                    { name: '卡關停留時間' },
+                                    { name: '情緒沮喪次數' }
+                                ]
+                            },
+                            { 
+                                name: '顯性維度',
+                                children: [
+                                    { name: '已解鎖知識節點' },
+                                    { name: '完成的微實作' }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            };
+
+            var option = {
+                tooltip: {
+                    trigger: 'item',
+                    triggerOn: 'mousemove',
+                    backgroundColor: 'rgba(66, 72, 116, 0.95)',
+                    borderColor: '#a6b1e1',
+                    borderWidth: 1,
+                    padding: 12,
+                    textStyle: {
+                        color: '#d6e5e3',
+                        fontFamily: "'Noto Serif TC', serif"
+                    },
+                    formatter: function (params) {
+                        var nodeName = params.data.name.replace('\n', '<br/>');
+                        if (params.data.desc) {
+                            return `
+                                <div style="max-width: 300px; white-space: normal; line-height: 1.5;">
+                                    <strong style="font-size: 1.1em; color: #dcd6f7;">${nodeName}</strong>
+                                    <hr style="border: none; border-top: 1px dashed #a6b1e1; margin: 8px 0;" />
+                                    <span style="font-size: 0.9em; opacity: 0.9;">${params.data.desc}</span>
+                                </div>
+                            `;
+                        }
+                        return `<strong>${nodeName}</strong>`;
+                    }
+                },
+                series: [
+                    {
+                        type: 'tree',
+                        data: [treeData],
+                        top: '5%',
+                        left: '15%',
+                        bottom: '5%',
+                        right: '25%',
+                        symbolSize: 15,
+                        roam: true, 
+                        initialTreeDepth: 2, 
+                        itemStyle: {
+                            color: '#dcd6f7',
+                            borderColor: '#a6b1e1',
+                            borderWidth: 2
+                        },
+                        label: {
+                            position: 'left',
+                            verticalAlign: 'middle',
+                            align: 'right',
+                            fontSize: 15,
+                            fontFamily: "'Noto Serif TC', serif",
+                            color: '#d6e5e3'
+                        },
+                        leaves: {
+                            label: {
+                                position: 'right',
+                                verticalAlign: 'middle',
+                                align: 'left',
+                                color: '#cacfd6'
+                            }
+                        },
+                        emphasis: {
+                            focus: 'descendant'
+                        },
+                        expandAndCollapse: true,
+                        animationDuration: 550,
+                        animationDurationUpdate: 750,
+                        lineStyle: {
+                            color: '#a6b1e1',
+                            width: 2,
+                            curveness: 0.6,
+                            opacity: 0.5
+                        }
+                    }
+                ]
+            };
+
+            // 用 window.myChart 來設定初始選項
+            window.myChart.setOption(option);
+
+            // --- 1. 樹狀圖全展開/收合核心邏輯 ---
+            let isTreeExpanded = false; 
+            window.toggleTree = function() {
+                isTreeExpanded = !isTreeExpanded;
+                function updateNode(node, depth) {
+                    if (node.children) {
+                        if (isTreeExpanded) node.collapsed = false;
+                        else node.collapsed = depth >= 2;
+                        node.children.forEach(child => updateNode(child, depth + 1));
+                    }
+                }
+                updateNode(treeData, 0);
+                window.myChart.setOption({ series: [{ data: [treeData] }] });
+            };
+
+            // --- 2. 字體縮放邏輯 (對齊預設值 15) ---
+            let currentFontSize = 15; 
+            function updateChartFont() {
+                document.getElementById('font-size-val').innerText = currentFontSize;
+                window.myChart.setOption({
+                    series: [{
+                        label: { fontSize: currentFontSize },
+                        leaves: { label: { fontSize: currentFontSize } }
+                    }]
+                });
+            }
+
+            document.getElementById('font-increase').addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (currentFontSize < 25) { currentFontSize += 1; updateChartFont(); }
+            });
+
+            document.getElementById('font-decrease').addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (currentFontSize > 9) { currentFontSize -= 1; updateChartFont(); }
+            });
+
+            window.addEventListener('resize', function() { window.myChart.resize(); });
+        });
+    </script>
+</body>
+</html>

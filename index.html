@@ -19,18 +19,23 @@
             --shadow-grey: #424874;   
         }
 
+        /* 【核心修復 1】：強制關閉手機瀏覽器的字體自動放大機制 (Font Boosting) */
+        html, body {
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+        }
+
         .reveal {
             background-color: var(--shadow-grey);
             color: var(--cream);
-            /* 套用細體襯線字 */
             font-family: 'Noto Serif TC', serif;
             font-weight: 300;
+            font-size: 22px; /* 設定全域基準字號，穩定比例尺 */
         }
 
         .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
             color: var(--cream);
             text-transform: none;
-            /* 拿掉原本的 800 超粗體，改成 400 讓它保持細緻但清晰 */
             font-weight: 400;
             font-family: 'Noto Serif TC', serif;
             letter-spacing: 2px;
@@ -39,32 +44,31 @@
         .highlight { 
             color: var(--pacific-blue); 
             font-weight: 400; 
-            border-bottom: 1px dashed var(--pacific-blue); /* 加點細節代替粗體 */
+            border-bottom: 1px dashed var(--pacific-blue);
         }
 
         .chapter-label {
             position: fixed;
             top: 30px;
             left: 30px;
-            font-size: 0.7em;
+            font-size: 0.7rem;
             color: var(--steel-blue);
             letter-spacing: 3px;
             z-index: 50;
             font-family: 'Inter', sans-serif; 
         }
 
-        /* 【修復點】：讓內容卡片在手機上也能自適應寬度 */
         .content-card {
             background: rgba(202, 207, 214, 0.1);
             border-left: 2px solid var(--forest-green); 
-            padding: 25px 30px;
+            padding: 30px 50px;
             border-radius: 0 15px 15px 0;
             text-align: left;
-            margin: 15px auto;
-            width: 90% !important;
+            margin: 20px auto;
             max-width: 900px;
+            width: 90% !important;
             box-sizing: border-box;
-            font-size: 0.95em;
+            font-size: 0.95rem;
             line-height: 1.6;
         }
 
@@ -74,7 +78,7 @@
             position: fixed;
             bottom: 20px;
             right: 20px;
-            font-size: 0.6em;
+            font-size: 0.65rem;
             color: var(--steel-blue);
             opacity: 0.5;
             z-index: 50;
@@ -83,7 +87,7 @@
             font-family: 'Inter', sans-serif;
         }
 
-        /* 【修復點】：終極滾輪與裁切防禦機制 (改成 dvh 與 flex 彈性佈局) */
+        /* 終極滾輪與裁切防禦機制 */
         .reveal .slides {
             height: 100% !important;
             width: 100% !important;
@@ -102,25 +106,20 @@
             top: 0 !important; 
             box-sizing: border-box;
             padding: 80px 15px 100px 15px !important;
-            
-            /* 隱藏捲軸 - Firefox */
             scrollbar-width: none; 
-            /* 隱藏捲軸 - IE/Edge */
             -ms-overflow-style: none;
         }
         
-        /* 隱藏捲軸 - Chrome, Safari, Opera */
         .reveal .slides > section::-webkit-scrollbar, 
         .reveal .slides > section > section::-webkit-scrollbar {
             display: none;
         }
         
-        /* 最後一個章節及其內頁內容：強制水平且垂直居中 */
         .reveal .slides > section:last-child,
         .reveal .slides > section:last-child section {
-            justify-content: center !important; /* 垂直居中 */
+            justify-content: center !important; 
             text-align: center !important;      
-            padding-top: 0 !important;          /* 拿掉前面的頂部防裁切留白 */
+            padding-top: 0 !important;          
             padding-bottom: 0 !important;
         }
         
@@ -131,7 +130,7 @@
             align-items: center;
             gap: 15px;
             margin-top: 15px;
-            padding-bottom: 40px; /* 【修復點】：底部安全留白，避免手機切斷 */
+            padding-bottom: 40px; 
             position: relative;
             z-index: 100;
             width: 100%;
@@ -145,18 +144,17 @@
             border-radius: 15px;
             border: 1px solid rgba(166, 177, 225, 0.2);
             box-shadow: 0 10px 20px rgba(0,0,0,0.4);
-            flex-wrap: wrap; /* 允許小螢幕折行 */
+            flex-wrap: wrap; 
             justify-content: center;
         }
 
         .font-control-label {
-            font-size: 0.85em;
+            font-size: 0.85rem;
             color: var(--cream);
             margin-right: 15px;
             font-weight: 300;
         }
 
-        /* 立體 3D 按鈕 */
         .btn-3d {
             background: linear-gradient(145deg, #4b5284, #3f456f);
             box-shadow: 4px 4px 8px #353a5d, -4px -4px 8px #4f568b;
@@ -169,7 +167,8 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: all 0.2s ease;
+            flex-shrink: 0; /* 【核心修復 2】：禁止按鈕被擠壓變形 */
         }
 
         .btn-3d:active {
@@ -177,7 +176,6 @@
             transform: scale(0.95);
         }
 
-        /* 數位滾輪顯示窗 */
         .dial-display {
             background: #1a1c2e;
             box-shadow: inset 3px 3px 7px #0d0e17, inset -3px -3px 7px #272a45;
@@ -187,15 +185,15 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.2em;
+            font-size: 1.2rem;
             font-family: 'Inter', sans-serif;
             font-weight: 600;
             margin: 0 15px;
             border-radius: 8px;
+            flex-shrink: 0; /* 禁止數字框被擠壓 */
             text-shadow: 0 0 10px rgba(220, 214, 247, 0.5);
         }
 
-        /* 【修復點】：玻璃擬態提示框 (允許換行與安全行高) */
         .glass-hint {
             background: rgba(214, 229, 227, 0.05); 
             backdrop-filter: blur(12px); 
@@ -204,7 +202,7 @@
             border-radius: 25px;
             padding: 10px 25px;
             color: var(--steel-blue);
-            font-size: 0.7em;
+            font-size: 0.75rem;
             letter-spacing: 1px;
             line-height: 1.6;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
@@ -214,6 +212,34 @@
             text-align: center;
             flex-wrap: wrap; 
             max-width: 90%;
+        }
+
+        /* 【核心修復 3】：針對手機螢幕的強制鎮壓 (RWD) */
+        @media screen and (max-width: 768px) {
+            .reveal { font-size: 16px; }
+            
+            /* 強制壓制第一頁被行內樣式撐爆的標題 */
+            .reveal h1[style] { font-size: 2.5rem !important; margin-top: 5vh !important; }
+            .reveal h3[style] { font-size: 1.2rem !important; }
+            
+            /* 讓提案人名單不要撞在一起 */
+            .reveal div[style*="margin-top: 60px"] { margin-top: 30px !important; }
+
+            .content-card {
+                padding: 20px !important;
+                width: 95% !important;
+            }
+
+            .glass-hint { font-size: 0.8rem; padding: 12px 20px; }
+            
+            .chapter-label { top: 15px; left: 15px; font-size: 0.6rem; }
+            .control-hint { bottom: 10px; right: 10px; font-size: 0.55rem; }
+
+            /* 釋放樹狀圖 600px 的硬限制，讓它在手機上能彈性縮放 */
+            #tree-chart {
+                height: 55vh !important;
+                min-height: 350px !important;
+            }
         }
     </style>
 </head>

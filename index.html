@@ -1347,11 +1347,9 @@
         });
     </script>
     <script type="module">
-        // 使用與你 Config 相符的 12.13.0 版本
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-        import { getDatabase, ref, onChildAdded } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
 
-        // 你的專屬 Config
         const firebaseConfig = {
             apiKey: "AIzaSyDTYM06F0OVGp3p8Z12SzhFP5XKbPcn6MM",
             authDomain: "graduation-project-idea-qa.firebaseapp.com",
@@ -1365,42 +1363,79 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        const commentsRef = ref(db, 'qna_feedbacks'); // 監聽這個資料節點
-
+        const commentsRef = ref(db, 'qna_feedbacks'); 
         const wall = document.getElementById('feedback-wall');
 
-        // 當有新留言寫入資料庫時，自動觸發
-        onChildAdded(commentsRef, (data) => {
-            const comment = data.val();
-            // 🛡️ 新增這行防線：如果被後台標記為 hidden，就不渲染到畫面上
-            if (comment.status === 'hidden') return;
+        // 🚀 全新強化的監聽邏輯
+        onValue(commentsRef, (snapshot) => {
+            const data = snapshot.val();
             
-            // 移除「等待連線」的提示字
-            const hint = wall.querySelector('.control-hint');
-            if (hint) hint.remove();
+            // 1. 清空牆面
+            wall.innerHTML = '';
 
-            // 創造一個全新的玻璃態氣泡
-            const bubble = document.createElement('div');
-            bubble.className = 'glass-proposer-card'; 
-            bubble.style.cssText = `
-                margin-top: 0; 
-                padding: 15px 25px; 
-                width: 100%; 
-                box-sizing: border-box;
-                animation: slideInUp 0.5s cubic-bezier(0.26, 0.86, 0.44, 0.98) forwards;
-            `;
-            
-            bubble.innerHTML = `
-                <div class="proposer-title" style="color: var(--pacific-blue); margin-bottom: 5px;">
-                    <i class="fa-solid fa-comment-dots"></i> ${comment.author || '匿名聽眾'}
-                </div>
-                <div class="proposer-names" style="font-size: 0.9rem; line-height: 1.5; color: var(--cream);">
-                    ${comment.text}
-                </div>
-            `;
-            
-            wall.appendChild(bubble);
-            wall.scrollTop = wall.scrollHeight; // 自動滾動到底部
+            // 如果完全沒資料，顯示等待畫面
+            if (!data) {
+                wall.innerHTML = '<div class="control-hint" style="text-align: center; width: 100%; margin-top: 20px;">等待連線與提問...</div>';
+                return;
+            }
+
+            // 2. 將資料轉為陣列並按時間排序（新的在下面，符合留言牆直覺）
+            const sortedComments = Object.keys(data)
+                .map(key => ({ id: key, ...data[key] }))
+                .sort((a, b) => a.timestamp - b.timestamp);
+
+            // 3. 開始渲染每個氣泡
+            sortedComments.forEach(comment => {
+                // 🛡️ 隱藏機制：後台設為 hidden 就直接跳過
+                if (comment.status === 'hidden') return;
+
+                const bubble = document.createElement('div');
+                bubble.className = 'glass-proposer-card'; 
+                
+                // ✨ 釘選特效邏輯
+                let customStyle = `
+                    margin-top: 0; 
+                    padding: 15px 25px; 
+                    width: 100%; 
+                    box-sizing: border-box;
+                    animation: slideInUp 0.5s cubic-bezier(0.26, 0.86, 0.44, 0.98) forwards;
+                    transition: all 0.4s ease;
+                `;
+
+                // 如果被釘選，加上紫色發光邊框與微放大效果
+                if (comment.isPinned) {
+                    customStyle += `
+                        border: 2px solid var(--pacific-blue); 
+                        box-shadow: 0 0 25px rgba(220, 214, 247, 0.6); 
+                        transform: scale(1.03);
+                        background: rgba(220, 214, 247, 0.15);
+                    `;
+                }
+                
+                bubble.style.cssText = customStyle;
+                
+                // 根據是否釘選切換圖示
+                const iconClass = comment.isPinned ? 'fa-thumbtack' : 'fa-comment-dots';
+                const iconStyle = comment.isPinned ? 'color: #ffcc00;' : 'color: var(--pacific-blue);';
+
+                bubble.innerHTML = `
+                    <div class="proposer-title" style="margin-bottom: 5px; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid ${iconClass}" style="${iconStyle}"></i> 
+                        <span style="color: var(--pacific-blue);">${comment.author || '匿名聽眾'}</span>
+                    </div>
+                    <div class="proposer-names" style="font-size: 0.95rem; line-height: 1.6; color: var(--cream);">
+                        ${comment.text}
+                    </div>
+                `;
+                
+                wall.appendChild(bubble);
+            });
+
+            // 4. 渲染完畢後，將牆面推到底部，確保能看到最新留言
+            wall.scrollTo({
+                top: wall.scrollHeight,
+                behavior: 'smooth'
+            });
         });
     </script>
 </body>

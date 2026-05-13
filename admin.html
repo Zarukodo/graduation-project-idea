@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>啟蒙導師 - 管理後台</title>
+    <style>
+        body { font-family: sans-serif; background: #f4f4f9; padding: 20px; }
+        .card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+        .hidden { opacity: 0.5; background: #eee; }
+        .pinned { border: 2px solid #a6b1e1; }
+        .btn-group button { margin-left: 5px; cursor: pointer; padding: 5px 10px; }
+        .btn-reset { background: #ff4d4d; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin-bottom: 20px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>管理員控制台</h1>
+    <button class="btn-reset" onclick="resetSession()">一鍵清空所有留言 (慎用)</button>
+    <div id="admin-list">載入中...</div>
+
+    <script>
+        const API_BASE = 'https://graduation-project-idea.onrender.com/api/admin';
+
+        async function loadFeedbacks() {
+            const res = await fetch(`${API_BASE}/feedbacks`);
+            const data = await res.json();
+            const container = document.getElementById('admin-list');
+            container.innerHTML = data.map(item => `
+                <div class="card ${item.status === 'hidden' ? 'hidden' : ''} ${item.isPinned ? 'pinned' : ''}">
+                    <div>
+                        <strong>${item.author}</strong>: ${item.text}
+                        <div style="font-size: 0.8em; color: #666;">${new Date(item.timestamp).toLocaleString()}</div>
+                    </div>
+                    <div class="btn-group">
+                        <button onclick="togglePin('${item.id}', ${!item.isPinned})">${item.isPinned ? '取消釘選' : '釘選聚焦'}</button>
+                        <button onclick="toggleStatus('${item.id}', '${item.status === 'visible' ? 'hidden' : 'visible'}')">
+                            ${item.status === 'visible' ? '隱藏' : '取消隱藏'}
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function toggleStatus(id, newStatus) {
+            await fetch(`${API_BASE}/feedback/${id}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            });
+            loadFeedbacks();
+        }
+
+        async function togglePin(id, pinState) {
+            await fetch(`${API_BASE}/feedback/${id}/pin`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ isPinned: pinState })
+            });
+            loadFeedbacks();
+        }
+
+        async function resetSession() {
+            if(confirm('確定要清空所有留言嗎？此動作無法復原！')) {
+                await fetch(`${API_BASE}/reset-session`, { method: 'POST' });
+                loadFeedbacks();
+            }
+        }
+
+        setInterval(loadFeedbacks, 3000); // 每 3 秒自動更新一次
+        loadFeedbacks();
+    </script>
+</body>
+</html>

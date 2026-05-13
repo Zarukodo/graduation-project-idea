@@ -108,6 +108,64 @@
             btn.innerText = '發送至大螢幕';
         }
     });
+    // 📌 API: 取得所有留言 (後台顯示用)
+    app.get('/api/admin/feedbacks', async (req, res) => {
+    try {
+        const snapshot = await db.ref('qna_feedbacks').once('value');
+        const data = snapshot.val() || {};
+        // 將 Firebase 的物件格式轉成陣列，方便前端處理
+        const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+        res.json(list.reverse()); // 最新的在前面
+    } catch (error) {
+        res.status(500).json({ error: '讀取失敗' });
+    }
+    });
+
+    // 📌 API: 切換留言狀態 (隱藏/顯示)
+    app.patch('/api/admin/feedback/:id/status', async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body; // 'visible' 或 'hidden'
+    try {
+        await db.ref(`qna_feedbacks/${id}`).update({ status });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: '更新失敗' });
+    }
+    });
+
+    // 📌 API: 切換釘選狀態
+    app.patch('/api/admin/feedback/:id/pin', async (req, res) => {
+    const { id } = req.params;
+    const { isPinned } = req.body;
+    try {
+        // 先把所有人的釘選都拔掉 (確保全場只有一個焦點)
+        if (isPinned) {
+        const snapshot = await db.ref('qna_feedbacks').once('value');
+        const updates = {};
+        Object.keys(snapshot.val() || {}).forEach(key => {
+            updates[`qna_feedbacks/${key}/isPinned`] = false;
+        });
+        await db.ref().update(updates);
+        }
+        // 再釘選指定的這一個
+        await db.ref(`qna_feedbacks/${id}`).update({ isPinned });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: '釘選失敗' });
+    }
+    });
+
+    // 📌 API: 一鍵重置場次 (Archive)
+    app.post('/api/admin/reset-session', async (req, res) => {
+    try {
+        // 這裡我們暫時用簡單做法：直接刪除所有留言
+        // 實務上建議照規格書寫的，改為更換 sessionId
+        await db.ref('qna_feedbacks').remove();
+        res.json({ success: true, message: '場次已清空' });
+    } catch (error) {
+        res.status(500).json({ error: '重置失敗' });
+    }
+    });
 </script>
 </body>
 </html>

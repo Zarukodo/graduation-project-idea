@@ -356,13 +356,13 @@
             display: none;
         }
 
-        /* 全螢幕按鈕的樣式 */
+        /* 全螢幕按鈕的樣式 (升級為浮動懸鈕) */
         #fullscreen-btn {
             position: fixed;
             top: 20px;
             right: 20px;
             z-index: 2000;
-            cursor: pointer;
+            cursor: grab; /* 預設改為可抓取的游標 */
             color: var(--steel-blue);
             background: rgba(66, 72, 116, 0.6);
             backdrop-filter: blur(8px);
@@ -374,8 +374,16 @@
             align-items: center;
             justify-content: center;
             font-size: 1.2rem;
-            transition: all 0.3s ease;
+            /* 把 all 改掉，避免 top/left 被動畫干擾導致拖曳時手感卡頓 */
+            transition: transform 0.3s ease, color 0.3s ease; 
+            touch-action: none; /* 關鍵：避免手機端按住時觸發網頁原生滑動 */
+            user-select: none; /* 避免不小心選取到裡面的 Icon */
         }
+        
+        #fullscreen-btn:active {
+            cursor: grabbing; /* 按下時游標變成抓緊 */
+        }
+        
         #fullscreen-btn:hover {
             transform: scale(1.1);
             color: var(--pacific-blue);
@@ -1010,17 +1018,110 @@
             // 註：這裡不需要 stopPropagation，讓 ECharts 繼續處理它內部的圖表拖曳
         }, { passive: false });
 
-        // --- 【全螢幕切換功能】 ---
+        // --- 【全螢幕切換功能：浮動懸鈕升級版】 ---
         const fsBtn = document.getElementById('fullscreen-btn');
-        fsBtn.addEventListener('click', () => {
-            if (!document.fullscreenElement) {
-                // 進入全螢幕
-                document.documentElement.requestFullscreen().catch(err => console.log(err));
-                fsBtn.innerHTML = '<i class="fa-solid fa-compress"></i>'; // 換成縮小圖示
-            } else {
-                // 退出全螢幕
-                document.exitFullscreen();
-                fsBtn.innerHTML = '<i class="fa-solid fa-expand"></i>'; // 換成放大圖示
+        
+        let isDraggingFs = false;
+        let hasMovedFs = false; // 用來區分是「點擊」還是「拖曳」
+        let fsStartX = 0, fsStartY = 0;
+        let fsInitialLeft = 0, fsInitialTop = 0;
+
+        const startFsDrag = (e) => {
+            if (e.pointerType === 'mouse' && e.button !== 0) return;
+            
+            isDraggingFs = true;
+            hasMovedFs = false; // 剛按下時，重置移動狀態
+            
+            fsStartX = e.clientX;
+            fsStartY = e.clientY;
+            
+            // 取得按鈕當下的絕對位置
+            const rect = fsBtn.getBoundingClientRect();
+            fsInitialLeft = rect.left;
+            fsInitialTop = rect.top;
+
+            if (e.pointerId) fsBtn.setPointerCapture(e.pointerId);
+            fsBtn.style.transition = 'none'; // 拖曳時關閉 CSS 動畫，確保完全跟手
+        };
+
+        const doFsDrag = (e) => {
+            if (!isDraggingFs) return;
+
+            const dx = e.clientX - fsStartX;
+            const dy = e.clientY - fsStartY;
+            
+            // 容錯閥值：移動超過 5px 才判定為「拖曳」
+            if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+                hasMovedFs = true;
+            }
+
+            if (hasMovedFs) {
+                e.preventDefault(); // 阻止原生行為
+                
+                // 計算新位置
+                let newLeft = fsInitialLeft + dx;
+                let newTop = fsInitialTop + dy;
+                
+                // 邊界防撞防呆：不讓按鈕被你拖出螢幕外救不回來
+                const maxLeft = window.innerWidth - fsBtn.offsetWidth;
+                const maxTop = window.innerHeight - fsBtn.offsetHeight;
+                
+                newLeft = Math.max(0, Math.min(newLeft, maxLeft));
+                newTop = Math.max(0, Math.min(newTop, maxTop));
+                
+                // 覆寫原本的 right 屬性，統一用 left 和 top 控制
+                fsBtn.style.right = 'auto'; 
+                fsBtn.style.left = newLeft + 'px';
+                fsBtn.style.top = newTop + 'px';
+            }
+        };
+
+        const endFsDrag = (e) => {
+            if (!isDraggingFs) return;
+            isDraggingFs = false;
+            
+            if (e.pointerId) fsBtn.releasePointerCapture(e.pointerId);
+            fsBtn.style.transition = 'transform 0.3s ease, color 0.3s ease'; // 恢復 Hover 動畫
+            
+            // 核心邏輯：如果沒有移動超過 5px，就視為「點擊」觸發全螢幕切換
+            if (!hasMovedFs) {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => console.log(err));
+                    fsBtn.innerHTML = '<i class="fa-solid fa-compress"></i>';
+                } else {
+                    document.exitFullscreen();
+                    fsBtn.innerHTML = '<i class="fa-solid fa-expand"></i>';
+                }
+            }
+        };
+
+        // 綁定全域指標事件，確保拖曳滑順不斷線
+        fsBtn.addEventListener('pointerdown', startFsDrag);
+        window.addEventListener('pointermove', doFsDrag, { passive: false });
+        window.addEventListener('pointerup', endFsDrag);
+        window.addEventListener('pointercancel', endFsDrag);
+        // --- 【視窗縮放防呆機制：邊界巡邏員】 ---
+        window.addEventListener('resize', () => {
+            // 如果你正抓著它拖曳，就交給拖曳的邊界判定去處理
+            if (isDraggingFs) return;
+
+            // 取得按鈕當下的絕對位置
+            const rect = fsBtn.getBoundingClientRect();
+            let currentLeft = rect.left;
+            let currentTop = rect.top;
+
+            // 計算縮放後，視窗全新的最大安全邊界
+            const maxLeft = window.innerWidth - fsBtn.offsetWidth;
+            const maxTop = window.innerHeight - fsBtn.offsetHeight;
+
+            // 檢查是否超出新邊界，超出的話就強制修正回來
+            let newLeft = Math.max(0, Math.min(currentLeft, maxLeft));
+            let newTop = Math.max(0, Math.min(currentTop, maxTop));
+
+            // 只有位置真的需要校正時才去動 DOM，節省效能
+            if (newLeft !== currentLeft || newTop !== currentTop) {
+                fsBtn.style.left = newLeft + 'px';
+                fsBtn.style.top = newTop + 'px';
             }
         });
     </script>

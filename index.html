@@ -29,7 +29,7 @@
             color: var(--cream);
             font-family: 'Noto Serif TC', serif;
             font-weight: 300;
-            font-size: 22px; 
+            font-size: 22px; /* 預設字體大小，後續會根據裝置寬度調整 */
         }
 
         .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
@@ -55,7 +55,7 @@
             letter-spacing: 3px;
             z-index: 50;
             font-family: 'Inter', sans-serif; 
-        }
+        }/*左上角章節標籤*/
 
         .content-card {
             background: rgba(202, 207, 214, 0.1);
@@ -67,9 +67,9 @@
             max-width: 900px;
             width: 90% !important;
             box-sizing: border-box;
-            font-size: 0.95rem;
+            font-size: 1.25rem;
             line-height: 1.6;
-        }
+        }/*內容小卡*/
 
         .reveal .controls { display: none !important; }
 
@@ -84,7 +84,7 @@
             text-align: right;
             line-height: 1.5;
             font-family: 'Inter', sans-serif;
-        }
+        }/*右下角操作提示*/
 
         .reveal .slides {
             height: 100% !important;
@@ -214,6 +214,7 @@
             max-width: 90%;
         }
 
+        /* 手機，平板適配 */
         @media screen and (max-width: 768px) {
             .reveal { font-size: 16px; }
             .reveal h1[style] { font-size: 2.5rem !important; margin-top: 5vh !important; }
@@ -235,6 +236,115 @@
                 visibility: visible !important;
             }
         }
+        /* --- 動態頂部進度條 --- */
+        .reveal .progress {
+            top: 0 !important;
+            bottom: auto !important;
+            height: 4px !important;
+            background-color: rgba(202, 207, 214, 0.1) !important;
+            opacity: 0; /* 預設完全透明隱藏 */
+            transition: opacity 0.4s ease, width 800ms cubic-bezier(0.26, 0.86, 0.44, 0.98) !important;
+            z-index: 1000 !important;
+        }
+
+        /* 當 JS 加上 active class 時才浮現 */
+        .reveal .progress.is-active {
+            opacity: 1;
+        }
+
+        .reveal .progress span {
+            background: var(--pacific-blue) !important;
+        }
+
+        /* --- 跟隨式章節氣泡提示 --- */
+        #chapter-tooltip {
+            position: fixed;
+            top: 15px; /* 在進度條下方一點點 */
+            left: 0;
+            transform: translateX(-50%); /* 確保氣泡正中心對準進度條的端點 */
+            background: rgba(66, 72, 116, 0.9);
+            backdrop-filter: blur(8px);
+            color: var(--cream);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-family: 'Inter', sans-serif;
+            letter-spacing: 1px;
+            pointer-events: none; /* 避免擋住滑鼠點擊 */
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s ease, left 800ms cubic-bezier(0.26, 0.86, 0.44, 0.98);
+            z-index: 1001;
+            white-space: nowrap;
+            border: 1px solid rgba(166, 177, 225, 0.3);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }/*頂部跟隨式章節氣泡提示*/
+
+        #chapter-tooltip.is-active {
+            opacity: 1;
+            visibility: visible;
+        }
+        /* --- 首頁視覺升級 --- */
+        .slogan-box {
+            margin: 40px auto;
+            position: relative;
+            max-width: 800px;
+        }
+
+        .slogan-main {
+            font-size: 1.5rem;
+            color: var(--pacific-blue);
+            font-weight: 400;
+            letter-spacing: 3px;
+            margin-bottom: 15px;
+            text-shadow: 0 2px 10px rgba(220, 214, 247, 0.2);
+        }/*首頁主標語*/
+
+        .slogan-sub {
+            font-size: 1.1rem;
+            color: var(--cream);
+            opacity: 0.85;
+            font-weight: 300;
+            letter-spacing: 1.5px;
+        }/*首頁副標語*/
+
+        .slogan-divider {
+            width: 80px;
+            height: 2px;
+            background: var(--forest-green);
+            margin: 20px auto;
+            border-radius: 2px;
+            opacity: 0.7;
+        }
+
+        /* 玻璃態提案人卡片 */
+        .glass-proposer-card {
+            background: rgba(214, 229, 227, 0.05); /* 極淡的白底 */
+            backdrop-filter: blur(12px); 
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(166, 177, 225, 0.25); /* 邊緣微光 */
+            border-radius: 15px;
+            padding: 20px 40px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            display: inline-block;
+            margin-top: 30px;
+        }
+
+        .proposer-title {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.65rem;
+            color: var(--forest-green);
+            letter-spacing: 4px;
+            margin-bottom: 10px;
+            opacity: 0.9;
+        }
+
+        .proposer-names {
+            font-size: 0.95rem;
+            color: var(--cream);
+            letter-spacing: 2px;
+            font-weight: 300;
+        }
     </style>
 </head>
 <body>
@@ -251,10 +361,17 @@
             <section>
                 <section data-background-gradient="linear-gradient(135deg, #424874 0%, #a6b1e1 100%)">
                     <p style="letter-spacing: 0.5em; color: var(--cream); opacity: 0.8; font-family: 'Inter', sans-serif; font-size: 0.6em;">GRADUATION PROJECT</p>
-                    <h1 style="font-size: 2.8em; margin-bottom: 0.2em;">人生啟蒙導師</h1>
-                    <h3 style="color: var(--pacific-blue); font-weight: 300;">解構現實，開啟興趣</h3>
-                    <div style="margin-top: 60px; font-size: 0.8em; color: var(--cream); opacity: 0.8;">
-                        提案人：郭泉宏、李康丞、張睿恆、吳修岳
+                    <h1 style="font-size: 2.8em; margin-bottom: 0.1em;">人生啟蒙導師</h1>
+                    
+                    <div class="slogan-box">
+                        <div class="slogan-main">拍下眼前世界，把萬物變成你的跨領域教材。</div>
+                        <div class="slogan-divider"></div>
+                        <div class="slogan-sub">一位不給標準答案，只陪你動手去闖的 AI 啟蒙導師。</div>
+                    </div>
+
+                    <div class="fragment glass-proposer-card">
+                        <div class="proposer-title">TEAM MEMBERS</div>
+                        <div class="proposer-names">郭泉宏(作者)、李康丞、張睿恆、吳修岳</div>
                     </div>
                 </section>
                 <section>
@@ -422,7 +539,7 @@
                 </section>
                 <section>
                     <h2>Q & A</h2>
-                    <p class="highlight" style="border:none;">感謝聆聽，期待交流</p>
+                    <p class="highlight" style="border:none;">感謝觀看，期待交流</p>
                 </section>
             </section>
 
@@ -452,7 +569,42 @@
             currentH = revealInstance.getIndices().h;
             updateLabel();
         });
+        
+        // --- 【動態進度條與氣泡提示系統】 ---
+        // 1. 動態建立氣泡 DOM 元素，不用弄髒你的 HTML
+        const tooltip = document.createElement('div');
+        tooltip.id = 'chapter-tooltip';
+        document.body.appendChild(tooltip);
 
+        const progressContainer = document.querySelector('.reveal .progress');
+        let hideProgressTimer; // 用來控制自動隱藏的計時器
+
+        // 2. 核心控制函數
+        function triggerProgressDisplay() {
+            // 每次觸發時，即時去畫面上找進度條
+            const progressContainer = document.querySelector('.reveal .progress');
+            if (!progressContainer) return; // 如果框架還沒準備好，就先略過
+
+            let progressValue = revealInstance.getProgress();
+            let currentH = revealInstance.getIndices().h;
+            
+            tooltip.innerText = chapterNames[currentH] || "啟蒙導師";
+            tooltip.style.left = (progressValue * 100) + '%';
+
+            progressContainer.classList.add('is-active');
+            tooltip.classList.add('is-active');
+
+            clearTimeout(hideProgressTimer);
+            hideProgressTimer = setTimeout(() => {
+                progressContainer.classList.remove('is-active');
+                tooltip.classList.remove('is-active');
+            }, 2500); 
+        }
+
+        // 3. 綁定監聽器：只要畫面有任何變動（換頁、展開碎片），就喚醒進度條
+        revealInstance.on('slidechanged', triggerProgressDisplay);
+        revealInstance.on('fragmentshown', triggerProgressDisplay);
+        revealInstance.on('fragmenthidden', triggerProgressDisplay);
 
        revealInstance.on('slidechanged', event => {
             if (isAutoJumping) { isAutoJumping = false; return; }
@@ -507,8 +659,6 @@
 
         const handleSwipe = (e) => {
             if (e.pointerType === 'mouse') return;
-    
-            // 【免死金牌】樹狀圖內完全放行
             if (e.target.closest('#tree-chart')) return;
 
             let endX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
@@ -516,35 +666,36 @@
             
             let diffX = startX - endX; 
             let diffY = startY - endY;
-            
-            // 判定：水平滑動且距離 > 40px
-            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 40) {
-                
-                // 攔截原生事件
-                e.stopPropagation();
-                
-                // 防抖鎖 (300ms)
-                const now = Date.now();
-                if (now - lastSwipeTime < 300) return; 
-                lastSwipeTime = now;
+            let absX = Math.abs(diffX);
+            let absY = Math.abs(diffY);
 
-                const idx = revealInstance.getIndices(); // 取得當前座標位置
-
+            // 確保是明確的水平滑動
+            if (absX > absY * 2 && absX > 40) {
                 if (diffX > 0) {
-                    // 向左滑 (動作意圖：想去右邊下一頁)
+                    // === 【向左滑：想看下一頁】 ===
                     if (revealInstance.availableFragments().next) {
-                        // 還有碎片沒看？執行你的「空白鍵妥協方案」：瞬間全展開！
+                        // 1. 還有內容沒看：攔截訊號！強行阻止 Reveal 換章節
+                        e.stopPropagation();
+                        // 瞬間展開所有碎片（當作空白鍵）
                         while (revealInstance.availableFragments().next) {
                             revealInstance.nextFragment();
                         }
-                    } else {
-                        // 碎片都看完了，強制跨越章節 (不受 Reveal 原生限制)
-                        revealInstance.slide(idx.h + 1);
                     }
+                    // 2. 如果沒內容了：什麼都不做！
+                    // 不攔截、絕對不呼叫 slide()，直接放行給 Reveal 原生引擎完美換一頁！
+
                 } else {
-                    // 向右滑 (動作意圖：想去左邊上一頁)
-                    // 回頭看不需要管碎片，直接強制跳回上一章
-                    revealInstance.slide(idx.h - 1);
+                    // === 【向右滑：想看上一頁】 ===
+                    if (revealInstance.availableFragments().prev) {
+                        // 1. 還有內容沒收：攔截訊號！強行阻止 Reveal 回上一章
+                        e.stopPropagation();
+                        // 瞬間收起所有碎片
+                        while (revealInstance.availableFragments().prev) {
+                            revealInstance.prevFragment();
+                        }
+                    }
+                    // 2. 如果內容收完了：什麼都不做！
+                    // 放手讓 Reveal 原生引擎幫你滑順地回到上一章！
                 }
             }
         };

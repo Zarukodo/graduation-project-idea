@@ -345,6 +345,16 @@
             letter-spacing: 2px;
             font-weight: 300;
         }
+        /*氣泡和進度條的動畫效果，讓整體互動更流暢自然*/
+        @keyframes slideInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 隱藏留言板原本的捲軸，讓畫面保持乾淨 */
+        #feedback-wall::-webkit-scrollbar {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -539,7 +549,24 @@
                 </section>
                 <section>
                     <h2>Q & A</h2>
-                    <p class="highlight" style="border:none;">感謝觀看，期待交流</p>
+                    <p class="highlight" style="border:none;">感謝參與，期待與你的交流</p>
+                    
+                    <div style="display: flex; gap: 40px; margin-top: 40px; align-items: flex-start; justify-content: center;">
+                        <div class="glass-proposer-card" style="margin-top:0; padding: 30px; text-align: center; border-radius: 20px;">
+                            <p style="font-size: 0.9rem; color: var(--pacific-blue); margin-bottom: 15px; letter-spacing: 2px;">SCAN TO FEEDBACK</p>
+                            <div style="width: 160px; height: 160px; background: #fff; padding: 10px; border-radius: 10px; transition: transform 0.2s; cursor: pointer;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                                
+                                <a href="feedback.html" target="_blank" style="display: block; width: 100%; height: 100%;">
+                                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://github.com/你的帳號/你的專案/feedback.html" alt="點擊或掃描開啟表單" style="width: 100%;">
+                                </a>
+
+                            </div>
+                        </div>
+
+                        <div id="feedback-wall" style="width: 450px; height: 350px; overflow-y: auto; text-align: left; display: flex; flex-direction: column; gap: 15px; padding: 10px;">
+                            <div class="control-hint" style="position: relative; right: 0; bottom: 0; text-align: center; width: 100%; margin-top: auto;">等待連線與提問...</div>
+                        </div>
+                    </div>
                 </section>
             </section>
 
@@ -579,17 +606,52 @@
         const progressContainer = document.querySelector('.reveal .progress');
         let hideProgressTimer; // 用來控制自動隱藏的計時器
 
-        // 2. 核心控制函數
+        // 進度顯示控制函數
         function triggerProgressDisplay() {
-            // 每次觸發時，即時去畫面上找進度條
             const progressContainer = document.querySelector('.reveal .progress');
-            if (!progressContainer) return; // 如果框架還沒準備好，就先略過
+            if (!progressContainer) return; 
 
-            let progressValue = revealInstance.getProgress();
-            let currentH = revealInstance.getIndices().h;
+            const indices = revealInstance.getIndices();
+            const h = indices.h;
+            const v = indices.v || 0; // 垂直子頁的 index (從 0 開始)
             
-            tooltip.innerText = chapterNames[currentH] || "啟蒙導師";
-            tooltip.style.left = (progressValue * 100) + '%';
+            // 取得當前大章節的 DOM 結構
+            const currentChapter = document.querySelectorAll('.reveal .slides > section')[h];
+            // 計算這個大章節底下有幾個垂直子頁 (如果沒有子頁，length 會是 0)
+            const verticalSlides = currentChapter.querySelectorAll('section');
+            
+            let progressText = "";
+            const currentSlide = revealInstance.getCurrentSlide();
+            const totalFragments = currentSlide.querySelectorAll('.fragment').length;
+            
+            // 計算卡片(碎片)字串
+            let fragmentText = "";
+            if (totalFragments > 0) {
+                const visibleFragments = currentSlide.querySelectorAll('.fragment.visible').length;
+                fragmentText = ` ✦ 內容小卡 ${visibleFragments}/${totalFragments}`;
+            }
+
+            // 計算頁面字串
+            if (verticalSlides.length > 1) {
+                // 代表這個章節有往下延伸的子頁
+                progressText = ` [ 內容頁 ${v + 1} / ${verticalSlides.length}${fragmentText} ]`;
+            } else if (totalFragments > 0) {
+                // 單頁結構，但裡面有卡片
+                progressText = ` [${fragmentText} ]`;
+            }
+
+            // 將章節名稱與進度合併顯示
+            tooltip.innerText = (chapterNames[h] || "啟蒙導師") + progressText;
+            
+            // 計算百分比
+            let progressPercent = revealInstance.getProgress() * 100;
+            
+            // 動態調整位置與平移：
+            // 進度 0% 時，translateX 是 0% (靠左對齊)
+            // 進度 50% 時，translateX 是 -50% (置中對齊)
+            // 進度 100% 時，translateX 是 -100% (靠右對齊)
+            tooltip.style.left = progressPercent + '%';
+            tooltip.style.transform = `translateX(-${progressPercent}%)`;
 
             progressContainer.classList.add('is-active');
             tooltip.classList.add('is-active');
@@ -1009,6 +1071,61 @@
                 if (currentFontSize > 9) { currentFontSize -= 1; updateChartFont(); }
             });
 
+        });
+    </script>
+    <script type="module">
+        // 使用與你 Config 相符的 12.13.0 版本
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+        import { getDatabase, ref, onChildAdded } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
+
+        // 你的專屬 Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDTYM06F0OVGp3p8Z12SzhFP5XKbPcn6MM",
+            authDomain: "graduation-project-idea-qa.firebaseapp.com",
+            projectId: "graduation-project-idea-qa",
+            storageBucket: "graduation-project-idea-qa.firebasestorage.app",
+            messagingSenderId: "1021044153134",
+            appId: "1:1021044153134:web:6ac1fc513e76782172f8bf",
+            measurementId: "G-88HFRZBL0L",
+            databaseURL: "https://graduation-project-idea-qa-default-rtdb.asia-southeast1.firebasedatabase.app"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const commentsRef = ref(db, 'qna_feedbacks'); // 監聽這個資料節點
+
+        const wall = document.getElementById('feedback-wall');
+
+        // 當有新留言寫入資料庫時，自動觸發
+        onChildAdded(commentsRef, (data) => {
+            const comment = data.val();
+            
+            // 移除「等待連線」的提示字
+            const hint = wall.querySelector('.control-hint');
+            if (hint) hint.remove();
+
+            // 創造一個全新的玻璃態氣泡
+            const bubble = document.createElement('div');
+            bubble.className = 'glass-proposer-card'; 
+            bubble.style.cssText = `
+                margin-top: 0; 
+                padding: 15px 25px; 
+                width: 100%; 
+                box-sizing: border-box;
+                animation: slideInUp 0.5s cubic-bezier(0.26, 0.86, 0.44, 0.98) forwards;
+            `;
+            
+            bubble.innerHTML = `
+                <div class="proposer-title" style="color: var(--pacific-blue); margin-bottom: 5px;">
+                    <i class="fa-solid fa-comment-dots"></i> ${comment.author || '匿名聽眾'}
+                </div>
+                <div class="proposer-names" style="font-size: 0.9rem; line-height: 1.5; color: var(--cream);">
+                    ${comment.text}
+                </div>
+            `;
+            
+            wall.appendChild(bubble);
+            wall.scrollTop = wall.scrollHeight; // 自動滾動到底部
         });
     </script>
 </body>

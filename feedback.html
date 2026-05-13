@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>提問與回饋</title>
+    <style>
+        body {
+            background-color: #424874;
+            color: #d6e5e3;
+            font-family: 'Noto Serif TC', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .form-container {
+            background: rgba(214, 229, 227, 0.05);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(166, 177, 225, 0.25);
+            border-radius: 15px;
+            padding: 30px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        h2 { margin-top: 0; color: #dcd6f7; letter-spacing: 2px; text-align: center; }
+        input, textarea {
+            width: 100%;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid rgba(166, 177, 225, 0.4);
+            color: #fff;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+        textarea { resize: none; height: 100px; }
+        button {
+            width: 100%;
+            background: linear-gradient(135deg, #a6b1e1, #dcd6f7);
+            color: #424874;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        button:active { transform: scale(0.95); }
+    </style>
+</head>
+<body>
+
+    <div class="form-container">
+        <h2>發送回饋給講者</h2>
+        <input type="text" id="author" placeholder="您的稱呼 (選填)">
+        <textarea id="message" placeholder="請問有什麼建議或問題嗎？"></textarea>
+        <button id="submitBtn">發送至大螢幕</button>
+    </div>
+
+    <script type="module">
+        // 一樣對齊 12.13.0 版本，這裡多引入了 push (推播) 功能
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+        import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
+
+        // 你的專屬 Config (必須跟 index.html 完全一模一樣)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDTYM06F0OVGp3p8Z12SzhFP5XKbPcn6MM",
+            authDomain: "graduation-project-idea-qa.firebaseapp.com",
+            projectId: "graduation-project-idea-qa",
+            storageBucket: "graduation-project-idea-qa.firebasestorage.app",
+            messagingSenderId: "1021044153134",
+            appId: "1:1021044153134:web:6ac1fc513e76782172f8bf",
+            measurementId: "G-88HFRZBL0L",
+            databaseURL: "https://graduation-project-idea-qa-default-rtdb.asia-southeast1.firebasedatabase.app"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        document.getElementById('submitBtn').addEventListener('click', () => {
+            const authorVal = document.getElementById('author').value.trim() || '匿名聽眾';
+            const messageVal = document.getElementById('message').value.trim();
+
+            if (!messageVal) {
+                alert("總得寫點什麼吧！");
+                return;
+            }
+
+            const commentsRef = ref(db, 'qna_feedbacks');
+            // 把留言寫進資料庫
+            push(commentsRef, {
+                author: authorVal,
+                text: messageVal,
+                timestamp: Date.now()
+            }).then(() => {
+                alert("發送成功！請看大螢幕。");
+                document.getElementById('message').value = ''; 
+            }).catch((error) => {
+                console.error("寫入失敗", error);
+                alert("糟糕，發送失敗了。請檢查資料庫安全性規則是否設為測試模式！");
+            });
+        });
+    </script>
+</body>
+</html>

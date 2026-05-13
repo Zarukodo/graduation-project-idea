@@ -489,6 +489,7 @@
                 <section>
                     <h2>Chapter 02<br>核心方案</h2>
                     <p class="highlight" style="border:none;">陪伴式漸進探索：做一個降低門檻的「啟蒙者」</p>
+                    <i class="fa-solid fa-chevron-down" style="margin-top: 50px; color: var(--forest-green); opacity: 0.7;"></i>
                 </section>
                 <section>
                     <h3>導師的分寸感</h3>
@@ -517,6 +518,7 @@
                 <section>
                     <h2>Chapter 03<br>情境展示</h2>
                     <p>實戰演示：當你拍下一支手錶</p>
+                    <i class="fa-solid fa-chevron-down" style="margin-top: 50px; color: var(--forest-green); opacity: 0.7;"></i>
                 </section>
                 <section>
                     <h3>Lv.1 啟蒙期（觀察）</h3>
@@ -573,6 +575,7 @@
                 <section>
                     <h2>Chapter 04<br>工程實踐</h2>
                     <p class="highlight" style="border:none;">Vibe Coding：如何用 AI 團隊快速實踐教育理想</p>
+                    <i class="fa-solid fa-chevron-down" style="margin-top: 50px; color: var(--forest-green); opacity: 0.7;"></i>
                 </section>
                 <section>
                     <h3>技術中樞 (Tech Stack)</h3>
@@ -601,6 +604,7 @@
                 <section data-background-color="var(--steel-blue)">
                     <h1 style="color: var(--shadow-grey);">讓好奇心不再等待</h1>
                     <p style="color: var(--shadow-grey); font-weight: 300;">把世界變成你的實驗室</p>
+                    <i class="fa-solid fa-chevron-down" style="margin-top: 50px; color: var(--shadow-grey); opacity: 0.7;"></i>
                 </section>
                 <section>
                     <h2>Q & A</h2>
@@ -652,7 +656,9 @@
         }).then(() => {
             currentH = revealInstance.getIndices().h;
             updateLabel();
+            triggerProgressDisplay();
         });
+
         
         // --- 【動態進度條與氣泡提示系統】 ---
         // 1. 動態建立氣泡 DOM 元素，不用弄髒你的 HTML
@@ -661,62 +667,71 @@
         document.body.appendChild(tooltip);
 
         const progressContainer = document.querySelector('.reveal .progress');
+        window.isDraggingProgress = false;
         let hideProgressTimer; // 用來控制自動隱藏的計時器
 
         // 進度顯示控制函數
         function triggerProgressDisplay() {
+            // 如果正在拖曳中，絕對不要讓自動更新邏輯干擾氣泡文字
+            if (window.isDraggingProgress) return; 
+
             const progressContainer = document.querySelector('.reveal .progress');
             if (!progressContainer) return; 
 
             const indices = revealInstance.getIndices();
             const h = indices.h;
-            const v = indices.v || 0; // 垂直子頁的 index (從 0 開始)
+            const v = indices.v || 0;
             
-            // 取得當前大章節的 DOM 結構
-            const currentChapter = document.querySelectorAll('.reveal .slides > section')[h];
-            // 計算這個大章節底下有幾個垂直子頁 (如果沒有子頁，length 會是 0)
-            const verticalSlides = currentChapter.querySelectorAll('section');
+            // 獲取當前水平章節底下的所有垂直頁面
+            // Reveal.js 結構中，如果該章節是堆疊，則 currentHorizontal 會包含多個 section
+            const horizontalSlides = revealInstance.getHorizontalSlides();
+            const currentHorizontal = horizontalSlides[h];
+            const verticalSlides = currentHorizontal ? currentHorizontal.querySelectorAll('section') : [];
             
             let progressText = "";
             const currentSlide = revealInstance.getCurrentSlide();
-            const totalFragments = currentSlide.querySelectorAll('.fragment').length;
             
-            // 計算卡片(碎片)字串
-            let fragmentText = "";
-            if (totalFragments > 0) {
-                const visibleFragments = currentSlide.querySelectorAll('.fragment.visible').length;
-                fragmentText = ` ✦ 內容小卡 ${visibleFragments}/${totalFragments}`;
+            if (currentSlide) {
+                const fragments = currentSlide.querySelectorAll('.fragment');
+                const totalFragments = fragments.length;
+                
+                let fragmentText = "";
+                if (totalFragments > 0) {
+                    // 計算已顯示的碎片
+                    const visibleFragments = currentSlide.querySelectorAll('.fragment.visible').length;
+                    fragmentText = ` ✦ 內容小卡 ${visibleFragments}/${totalFragments}`;
+                }
+
+                // 判斷要顯示哪種進度格式
+                if (verticalSlides.length > 0) {
+                    // 垂直堆疊模式
+                    progressText = ` [ 內容頁 ${v + 1} / ${verticalSlides.length}${fragmentText} ]`;
+                } else if (totalFragments > 0) {
+                    // 單頁但有碎片模式
+                    progressText = ` [${fragmentText} ]`;
+                }
             }
 
-            // 計算頁面字串
-            if (verticalSlides.length > 1) {
-                // 代表這個章節有往下延伸的子頁
-                progressText = ` [ 內容頁 ${v + 1} / ${verticalSlides.length}${fragmentText} ]`;
-            } else if (totalFragments > 0) {
-                // 單頁結構，但裡面有卡片
-                progressText = ` [${fragmentText} ]`;
-            }
-
-            // 將章節名稱與進度合併顯示
-            tooltip.innerText = (chapterNames[h] || "啟蒙導師") + progressText;
+            // 更新氣泡文字
+            const chapterTitle = chapterNames[h] || "啟蒙導師";
+            tooltip.innerText = chapterTitle + progressText;
             
-            // 計算百分比
+            // --- 避位邏輯 (靜態模式) ---
             let progressPercent = revealInstance.getProgress() * 100;
-            
-            // 動態調整位置與平移：
-            // 進度 0% 時，translateX 是 0% (靠左對齊)
-            // 進度 50% 時，translateX 是 -50% (置中對齊)
-            // 進度 100% 時，translateX 是 -100% (靠右對齊)
             tooltip.style.left = progressPercent + '%';
             tooltip.style.transform = `translateX(-${progressPercent}%)`;
 
+            // 顯示氣泡與進度條
             progressContainer.classList.add('is-active');
             tooltip.classList.add('is-active');
 
             clearTimeout(hideProgressTimer);
             hideProgressTimer = setTimeout(() => {
-                progressContainer.classList.remove('is-active');
-                tooltip.classList.remove('is-active');
+                // 拖曳中不要自動隱藏
+                if (!window.isDraggingProgress) {
+                    progressContainer.classList.remove('is-active');
+                    tooltip.classList.remove('is-active');
+                }
             }, 2500); 
         }
 
@@ -763,6 +778,68 @@
             }
         });
 
+        // --- 【進度條氣泡：Scrubber 3.0 觸控優先版本】 ---
+        
+        let isDraggingProgress = false;
+        let hSlidesCount = document.querySelectorAll('.reveal .slides > section').length;
+
+
+        // 2. 升級拖曳逻辑
+        const startProgressDrag = (e) => {
+            if (e.pointerType === 'mouse' && e.button !== 0) return; 
+            isDraggingProgress = true;
+            
+            tooltip.classList.add('is-active'); // 強制顯示氣泡
+            tooltip.style.cursor = 'grabbing';
+            
+            const progressContainer = document.querySelector('.reveal .progress');
+            if(progressContainer) progressContainer.style.height = '12px';
+            
+            // 👈 拖曳開始：立刻強行鎖定中心點，無視文字避位邏輯
+            tooltip.style.transform = 'translateX(-50%) scale(1.1)'; 
+            
+            clearTimeout(hideProgressTimer); 
+            if(e.pointerId) tooltip.setPointerCapture(e.pointerId);
+            e.stopPropagation();
+        };
+
+        const doProgressDrag = (e) => {
+            if (!isDraggingProgress) return;
+            e.preventDefault();
+            
+            let clientX = e.clientX; 
+            let percent = Math.max(0, Math.min(1, clientX / window.innerWidth));
+            
+            let maxH = Math.max(0, hSlidesCount - 1);
+            let previewH = Math.round(percent * maxH);
+            
+            // 拖曳中：氣泡絕對跟隨手指中心
+            tooltip.innerText = "跳轉至: " + (chapterNames[previewH] || "Chapter " + previewH);
+            tooltip.style.left = (percent * 100) + '%';
+            tooltip.style.transform = `translateX(-50%) scale(1.1)`; // 👈 始終置中
+        };
+
+        const endProgressDrag = (e) => {
+            if (!isDraggingProgress) return;
+            isDraggingProgress = false;
+            tooltip.style.cursor = 'grab';
+            
+            const progressContainer = document.querySelector('.reveal .progress');
+            if(progressContainer) progressContainer.style.height = '4px'; 
+            
+            if(e.pointerId) tooltip.releasePointerCapture(e.pointerId);
+            
+            let clientX = e.clientX;
+            let percent = Math.max(0, Math.min(1, clientX / window.innerWidth));
+            let maxH = Math.max(0, hSlidesCount - 1);
+            let targetH = Math.round(percent * maxH);
+            
+            revealInstance.slide(targetH, 0);
+            
+            // 👈 結束拖曳：呼叫原本的函數，讓氣泡根據最終位置「彈」回聰明避位處
+            triggerProgressDisplay(); 
+        };
+
         // --- 【手勢分流指揮所】 ---
         let startX = 0;
         let startY = 0;
@@ -777,8 +854,10 @@
         };
 
         const handleSwipe = (e) => {
+            if (typeof isDraggingProgress !== 'undefined' && isDraggingProgress) return;
             if (e.pointerType === 'mouse') return;
-            if (e.target.closest('#tree-chart') || e.target.closest('#feedback-wall') || e.target.closest('.content-card')) return;
+            // 樹狀圖已經在前面攔截了，這裡加個雙重保險
+            if (e.target.closest('#tree-chart')) return; 
 
             let endX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
             let endY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
@@ -788,33 +867,59 @@
             let absX = Math.abs(diffX);
             let absY = Math.abs(diffY);
 
-            // 確保是明確的水平滑動
+            // 【垂直滑動判定：專注處理卡片邊界與展開】
+            if (absY > absX && absY > 40) {
+                // 涵蓋內容小卡與 Q&A 留言板
+                const targetCard = e.target.closest('.content-card, #feedback-wall');
+                
+                if (targetCard) {
+                    const isAtTop = targetCard.scrollTop <= 0;
+                    // 使用 Math.ceil 處理手機端常見的小數點高度誤差，並給 2px 容錯
+                    const isAtBottom = Math.ceil(targetCard.scrollTop + targetCard.clientHeight) >= targetCard.scrollHeight - 2;
+
+                    if (diffY > 0 && isAtBottom) {
+                        // 往上滑 (想看下面內容)，且卡片已經到底 -> 展開下一項！
+                        if (revealInstance.availableFragments().next) revealInstance.nextFragment();
+                        else revealInstance.down();
+                    } else if (diffY < 0 && isAtTop) {
+                        // 往下滑 (想看上面內容)，且卡片已經到頂 -> 收合上一項！
+                        if (revealInstance.availableFragments().prev) revealInstance.prevFragment();
+                        else revealInstance.up();
+                    }
+                } else {
+                    // 如果手指滑在沒有卡片的空白處，直接霸氣換頁
+                    if (diffY > 0) {
+                        if (revealInstance.availableFragments().next) revealInstance.nextFragment();
+                        else revealInstance.down();
+                    } else if (diffY < 0) {
+                        if (revealInstance.availableFragments().prev) revealInstance.prevFragment();
+                        else revealInstance.up();
+                    }
+                }
+            }
+            
+            // 【水平滑動判定：一鍵全開/全收小卡】
             if (absX > absY * 2 && absX > 40) {
                 if (diffX > 0) {
-                    // === 【向左滑：想看下一頁】 ===
+                    // 向左滑 (想看下一頁/展開)
                     if (revealInstance.availableFragments().next) {
-                        // 1. 還有內容沒看：攔截訊號！強行阻止 Reveal 換章節
-                        e.stopPropagation();
-                        // 瞬間展開所有碎片（當作空白鍵）
+                        e.stopPropagation(); // 搶在 Reveal 換頁前攔截
+                        // 既然還有碎片沒開，用 while 迴圈一口氣全開！
                         while (revealInstance.availableFragments().next) {
                             revealInstance.nextFragment();
                         }
                     }
-                    // 2. 如果沒內容了：什麼都不做！
-                    // 不攔截、絕對不呼叫 slide()，直接放行給 Reveal 原生引擎完美換一頁！
-
+                    // 若沒有碎片了，腳本什麼都不做，完美放手給 Reveal 處理原生的下一頁過場
                 } else {
-                    // === 【向右滑：想看上一頁】 ===
+                    // 向右滑 (想看上一頁/收起)
                     if (revealInstance.availableFragments().prev) {
-                        // 1. 還有內容沒收：攔截訊號！強行阻止 Reveal 回上一章
-                        e.stopPropagation();
-                        // 瞬間收起所有碎片
+                        e.stopPropagation(); 
+                        // 既然有碎片開著，用 while 迴圈一口氣全收！
                         while (revealInstance.availableFragments().prev) {
                             revealInstance.prevFragment();
                         }
                     }
-                    // 2. 如果內容收完了：什麼都不做！
-                    // 放手讓 Reveal 原生引擎幫你滑順地回到上一章！
+                    // 若碎片都收完了，放手讓 Reveal 處理原生的上一頁過場
                 }
             }
         };
@@ -871,33 +976,38 @@
             }
         }, { capture: true });
 
-        window.addEventListener('dblclick', () => {
-            const chartSlide = document.getElementById('tree-chart').closest('section');
-            if (chartSlide && chartSlide.classList.contains('present')) {
-                if (typeof window.toggleTree === 'function') window.toggleTree();
-            } else {
-                while (revealInstance.availableFragments().next) revealInstance.nextFragment();
-            }
+        // --- 【樹狀圖專屬：雙擊與雙點擊防護】 ---
+        const treeChartDom = document.getElementById('tree-chart');
+        
+        // 把 pointer 事件也加進來！徹底瞎掉 Reveal.js 的監控！
+        ['touchstart', 'touchmove', 'touchend', 'pointerdown', 'pointermove', 'pointerup'].forEach(evt => {
+            treeChartDom.addEventListener(evt, e => {
+                e.stopPropagation(); 
+            }, { passive: true });
         });
 
-        let lastTouchTime = 0;
-        window.addEventListener('touchstart', (e) => {
+        // 針對桌機版的雙擊
+        treeChartDom.addEventListener('dblclick', (e) => {
+            if (typeof window.toggleTree === 'function') window.toggleTree();
+            e.stopPropagation(); // 阻止冒泡，避免點到外面的奇怪東西
+        });
+
+        // 針對手機版的雙點擊 (Tap)
+        let lastChartTouchTime = 0;
+        treeChartDom.addEventListener('touchstart', (e) => {
             const currentTime = new Date().getTime();
-            const tapLength = currentTime - lastTouchTime;
+            const tapLength = currentTime - lastChartTouchTime;
             
+            // 判定為雙擊 (兩次觸碰間隔小於 300ms)
             if (tapLength < 300 && tapLength > 0) {
-                const chartSlide = document.getElementById('tree-chart').closest('section');
-                if (chartSlide && chartSlide.classList.contains('present')) {
-                    if (typeof window.toggleTree === 'function') {
-                        window.toggleTree();
-                        e.preventDefault(); 
-                    }
-                } else {
-                    while (revealInstance.availableFragments().next) revealInstance.nextFragment();
-                    e.preventDefault();
+                if (typeof window.toggleTree === 'function') {
+                    window.toggleTree();
+                    e.preventDefault(); // 避免點擊穿透引發不可預期的選取
                 }
             }
-            lastTouchTime = currentTime;
+            lastChartTouchTime = currentTime;
+            
+            // 註：這裡不需要 stopPropagation，讓 ECharts 繼續處理它內部的圖表拖曳
         }, { passive: false });
 
         // --- 【全螢幕切換功能】 ---
@@ -918,17 +1028,7 @@
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            // 【學姊的事件防護罩 2.0：涵蓋所有需要獨立滾動的容器】
-            const shieldedElements = document.querySelectorAll('#tree-chart, #feedback-wall, .content-card');
-            
-            shieldedElements.forEach(el => {
-                ['touchstart', 'touchmove', 'touchend', 'pointerdown', 'pointermove', 'wheel'].forEach(evt => {
-                    el.addEventListener(evt, function(e) {
-                        e.stopPropagation(); // 阻止冒泡！這會讓 Reveal.js 完全瞎掉，不干涉原生滾動
-                    }, { passive: false });
-                });
-            });
-            // ----------------------------------------------------------
+           
             const chartDom = document.getElementById('tree-chart');
             window.myChart = echarts.init(chartDom);
             

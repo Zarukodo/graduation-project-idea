@@ -355,9 +355,64 @@
         #feedback-wall::-webkit-scrollbar {
             display: none;
         }
+
+        /* 全螢幕按鈕的樣式 */
+        #fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 2000;
+            cursor: pointer;
+            color: var(--steel-blue);
+            background: rgba(66, 72, 116, 0.6);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(166, 177, 225, 0.3);
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+        }
+        #fullscreen-btn:hover {
+            transform: scale(1.1);
+            color: var(--pacific-blue);
+        }
+
+        @media screen and (max-width: 768px) {
+            /* Q&A 區塊改為垂直排列 */
+            .qna-layout {
+                flex-direction: column !important;
+                align-items: center !important;
+                gap: 20px !important;
+            }
+            #feedback-wall {
+                width: 90vw !important;
+                height: 300px !important;
+            }
+            
+            /* 【關鍵】：讓過長內容可以原生滾動 */
+            .reveal .slides > section, 
+            .reveal .slides > section > section {
+                overflow-y: auto !important;
+                justify-content: flex-start !important; /* 從頂部開始排，避免內容被吃掉 */
+                padding-top: 80px !important;
+            }
+            
+            .content-card {
+                /* 如果單張卡片字太多，讓卡片自己也能捲動 */
+                max-height: 55vh;
+                overflow-y: auto;
+            }
+        }
     </style>
 </head>
 <body>
+    <div id="fullscreen-btn">
+        <i class="fa-solid fa-expand"></i>
+    </div>
 
     <div class="chapter-label" id="current-chapter">THE SPARK</div>
     <div class="control-hint">
@@ -551,15 +606,17 @@
                     <h2>Q & A</h2>
                     <p class="highlight" style="border:none;">感謝參與，期待與你的交流</p>
                     
-                    <div style="display: flex; gap: 40px; margin-top: 40px; align-items: flex-start; justify-content: center;">
+                    <div class="qna-layout" style="display: flex; gap: 40px; margin-top: 40px; align-items: flex-start; justify-content: center;">
+                        
                         <div class="glass-proposer-card" style="margin-top:0; padding: 30px; text-align: center; border-radius: 20px;">
                             <p style="font-size: 0.9rem; color: var(--pacific-blue); margin-bottom: 15px; letter-spacing: 2px;">SCAN TO FEEDBACK</p>
-                            <div style="width: 160px; height: 160px; background: #fff; padding: 10px; border-radius: 10px; transition: transform 0.2s; cursor: pointer;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                            
+                            <div style="width: 160px; height: 160px; background: #fff; padding: 10px; border-radius: 12px; transition: transform 0.2s; cursor: pointer; margin: 0 auto; display: flex; align-items: center; justify-content: center; box-sizing: border-box; overflow: hidden;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
                                 
-                                <a href="feedback.html" target="_blank" style="display: block; width: 100%; height: 100%;">
-                                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://zarukodo.github.io/graduation-project-idea/feedback.html" alt="點擊或掃描開啟表單" style="width: 100%;">
+                                <a href="feedback.html" target="_blank" style="display: block; width: 100%; height: 100%; border-radius: 6px; overflow: hidden;">
+                                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://zarukodo.github.io/graduation-project-idea/feedback.html" alt="點擊或掃描開啟表單" style="width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 6px;">
                                 </a>
-
+                                
                             </div>
                         </div>
 
@@ -721,7 +778,7 @@
 
         const handleSwipe = (e) => {
             if (e.pointerType === 'mouse') return;
-            if (e.target.closest('#tree-chart')) return;
+            if (e.target.closest('#tree-chart') || e.target.closest('#feedback-wall') || e.target.closest('.content-card')) return;
 
             let endX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
             let endY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
@@ -842,20 +899,37 @@
             }
             lastTouchTime = currentTime;
         }, { passive: false });
+
+        // --- 【全螢幕切換功能】 ---
+        const fsBtn = document.getElementById('fullscreen-btn');
+        fsBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                // 進入全螢幕
+                document.documentElement.requestFullscreen().catch(err => console.log(err));
+                fsBtn.innerHTML = '<i class="fa-solid fa-compress"></i>'; // 換成縮小圖示
+            } else {
+                // 退出全螢幕
+                document.exitFullscreen();
+                fsBtn.innerHTML = '<i class="fa-solid fa-expand"></i>'; // 換成放大圖示
+            }
+        });
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            var chartDom = document.getElementById('tree-chart');
-            // --- 【學姊的事件防護罩】阻斷觸控事件冒泡，防止 Reveal.js 搶走手勢 ---
-            // 把所有可能觸發滑動的事件通通攔截下來
-            ['touchstart', 'touchmove', 'touchend', 'pointerdown', 'pointermove'].forEach(evt => {
-                chartDom.addEventListener(evt, function(e) {
-                    e.stopPropagation(); // 關鍵：停止事件向上傳遞！
-                }, { passive: false });
+            // 【學姊的事件防護罩 2.0：涵蓋所有需要獨立滾動的容器】
+            const shieldedElements = document.querySelectorAll('#tree-chart, #feedback-wall, .content-card');
+            
+            shieldedElements.forEach(el => {
+                ['touchstart', 'touchmove', 'touchend', 'pointerdown', 'pointermove', 'wheel'].forEach(evt => {
+                    el.addEventListener(evt, function(e) {
+                        e.stopPropagation(); // 阻止冒泡！這會讓 Reveal.js 完全瞎掉，不干涉原生滾動
+                    }, { passive: false });
+                });
             });
             // ----------------------------------------------------------
+            const chartDom = document.getElementById('tree-chart');
             window.myChart = echarts.init(chartDom);
             
             var treeData = {

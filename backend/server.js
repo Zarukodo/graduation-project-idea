@@ -4,77 +4,121 @@ const admin = require('firebase-admin');
 const rateLimit = require('express-rate-limit');
 const xss = require('xss');
 
-// 初始化 Firebase Admin
+// 1. 初始化 Firebase Admin
 let serviceAccount;
 if (process.env.FIREBASE_CREDENTIALS) {
-  // 雲端環境：吃環境變數
   serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
 } else {
-  // 本地環境：吃實體檔案
   serviceAccount = require('./firebase-service-account.json');
 }
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://graduation-project-idea-qa-default-rtdb.asia-southeast1.firebasedatabase.app" // 這是你原本的 URL
+  databaseURL: "https://graduation-project-idea-qa-default-rtdb.asia-southeast1.firebasedatabase.app" 
 });
 
 const db = admin.database();
 const app = express();
 
-// 基礎 Middleware
+// 2. 基礎 Middleware
 app.use(cors());
 app.use(express.json());
 
-// 防禦機制：API 速率限制 (每 IP 一分鐘最多 5 次)
+// 3. 防禦機制：API 速率限制
 const feedbackLimiter = rateLimit({
   windowMs: 60 * 1000, 
   max: 5, 
   message: { error: '你點太快啦！請稍後再試。' }
 });
 
-// 📌 API: 接收前端留言
+// --- 📌 公開 API: 接收前端留言 ---
 app.post('/api/submit-feedback', feedbackLimiter, async (req, res) => {
   try {
     const { author, message } = req.body;
-
-    // 基本驗證
     if (!message || message.trim() === '') {
       return res.status(400).json({ error: '留言內容不能為空' });
     }
 
-    // 🛡️ XSS 過濾：清洗惡意語法
     const cleanAuthor = xss(author ? author.trim() : '匿名聽眾');
     const cleanMessage = xss(message.trim());
-
-    // 取得全局 SessionId (如果還沒做後台切換，先給個預設值)
-    // 實務上這裡應該去資料庫讀取當前的 active sessionId
     const currentSessionId = "session_001"; 
 
-    // 準備寫入的資料結構
     const feedbackData = {
       author: cleanAuthor,
       text: cleanMessage,
       timestamp: Date.now(),
       sessionId: currentSessionId,
-      status: 'visible', // 預設可見
+      status: 'visible',
       isPinned: false
     };
 
-    // 透過 Admin SDK 強制寫入 Firebase
     const newRef = db.ref('qna_feedbacks').push();
     await newRef.set(feedbackData);
-
-    console.log(`[新增留言] ${cleanAuthor}: ${cleanMessage}`);
     res.status(200).json({ success: true, id: newRef.key });
-
   } catch (error) {
     console.error("寫入失敗:", error);
     res.status(500).json({ error: '伺服器內部錯誤' });
   }
 });
 
-// 啟動伺服器
+// --- 📌 管理員 API: 下面這些是你原本漏掉的靈魂 ---
+
+// 取得所有留言
+app.get('/api/admin/feedbacks', async (req, res) => {
+  try {
+    const snapshot = await db.ref('qna_feedbacks').once('value');
+    const data = snapshot.val() || {};
+    const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+    res.json(list.reverse()); 
+  } catch (error) {
+    res.status(500).json({ error: '讀取失敗' });
+  }
+});
+
+// 切換留言狀態 (隱藏/顯示)
+app.patch('/api/admin/feedback/:id/status', async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body; 
+  try {
+    await db.ref(`qna_feedbacks/${id}`).update({ status });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: '狀態更新失敗' });
+  }
+});
+
+// 切換釘選聚焦
+app.patch('/api/admin/feedback/:id/pin', async (req, res) => {
+  const { id } = req.params;
+  const { isPinned } = req.body;
+  try {
+    if (isPinned) {
+      const snapshot = await db.ref('qna_feedbacks').once('value');
+      const data = snapshot.val() || {};
+      const updates = {};
+      Object.keys(data).forEach(key => {
+        updates[`qna_feedbacks/${key}/isPinned`] = false;
+      });
+      await db.ref().update(updates);
+    }
+    await db.ref(`qna_feedbacks/${id}`).update({ isPinned });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: '釘選失敗' });
+  }
+});
+
+// 一鍵重置 (刪除所有留言)
+app.post('/api/admin/reset-session', async (req, res) => {
+  try {
+    await db.ref('qna_feedbacks').remove();
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: '重置失敗' });
+  }
+});
+
+// 4. 啟動伺服器 (這一定要放在最後面)
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 啟蒙導師後台運行中： http://localhost:${PORT}`);

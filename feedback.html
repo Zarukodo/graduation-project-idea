@@ -57,10 +57,10 @@
 <body>
 
     <div class="form-container">
-        <h2>發送回饋給講者</h2>
+        <h2>發送回饋給團隊</h2>
         <input type="text" id="author" placeholder="您的稱呼 (選填)">
         <textarea id="message" placeholder="請問有什麼建議或問題嗎？"></textarea>
-        <button id="submitBtn">發送至大螢幕</button>
+        <button id="submitBtn">發送至QA頁面</button>
     </div>
 
     <script>
@@ -93,7 +93,7 @@
             });
 
             if (response.ok) {
-                alert("發送成功！請看大螢幕。");
+                alert("發送成功！請看QA頁面。");
                 document.getElementById('message').value = ''; 
             } else if (response.status === 429) {
                 alert("你點太快啦！請稍後再試。");
@@ -105,7 +105,7 @@
             alert("糟糕，連線到伺服器失敗了。");
         } finally {
             btn.disabled = false;
-            btn.innerText = '發送至大螢幕';
+            btn.innerText = '發送至QA頁面';
         }
     });
 </script>

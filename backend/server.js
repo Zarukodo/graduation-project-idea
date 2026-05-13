@@ -5,18 +5,18 @@ const rateLimit = require('express-rate-limit');
 const xss = require('xss');
 
 // 初始化 Firebase Admin
-const serviceAccount = require('./firebase-service-account.json');
 let serviceAccount;
 if (process.env.FIREBASE_CREDENTIALS) {
-  // 如果在雲端，從環境變數讀取字串並轉回 JSON 格式
+  // 雲端環境：吃環境變數
   serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
 } else {
-  // 如果在本地開發，就乖乖讀實體檔案
+  // 本地環境：吃實體檔案
   serviceAccount = require('./firebase-service-account.json');
 }
+
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://graduation-project-idea-qa-default-rtdb.asia-southeast1.firebasedatabase.app" // 換成你的 URL
+  databaseURL: "https://graduation-project-idea-qa-default-rtdb.asia-southeast1.firebasedatabase.app" // 這是你原本的 URL
 });
 
 const db = admin.database();

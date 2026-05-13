@@ -63,49 +63,51 @@
         <button id="submitBtn">發送至大螢幕</button>
     </div>
 
-    <script type="module">
-        // 一樣對齊 12.13.0 版本，這裡多引入了 push (推播) 功能
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-        import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
+    <script>
+    // 乾淨俐落，不用再引入又肥又大的 Firebase SDK 了！
+    document.getElementById('submitBtn').addEventListener('click', async () => {
+        const authorVal = document.getElementById('author').value.trim() || '匿名聽眾';
+        const messageVal = document.getElementById('message').value.trim();
 
-        // 你的專屬 Config (必須跟 index.html 完全一模一樣)
-        const firebaseConfig = {
-            apiKey: "AIzaSyDTYM06F0OVGp3p8Z12SzhFP5XKbPcn6MM",
-            authDomain: "graduation-project-idea-qa.firebaseapp.com",
-            projectId: "graduation-project-idea-qa",
-            storageBucket: "graduation-project-idea-qa.firebasestorage.app",
-            messagingSenderId: "1021044153134",
-            appId: "1:1021044153134:web:6ac1fc513e76782172f8bf",
-            measurementId: "G-88HFRZBL0L",
-            databaseURL: "https://graduation-project-idea-qa-default-rtdb.asia-southeast1.firebasedatabase.app"
-        };
+        if (!messageVal) {
+            alert("總得寫點什麼吧！");
+            return;
+        }
 
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.innerText = '發送中...';
 
-        document.getElementById('submitBtn').addEventListener('click', () => {
-            const authorVal = document.getElementById('author').value.trim() || '匿名聽眾';
-            const messageVal = document.getElementById('message').value.trim();
+        try {
+            // 改成打你的 Node.js API 
+            // 開發期可能是 http://localhost:3000/api/submit-feedback
+            const response = await fetch('http://192.168.56.1:3000/api/submit-feedback', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    author: authorVal,
+                    message: messageVal
+                })
+            });
 
-            if (!messageVal) {
-                alert("總得寫點什麼吧！");
-                return;
-            }
-
-            const commentsRef = ref(db, 'qna_feedbacks');
-            // 把留言寫進資料庫
-            push(commentsRef, {
-                author: authorVal,
-                text: messageVal,
-                timestamp: Date.now()
-            }).then(() => {
+            if (response.ok) {
                 alert("發送成功！請看大螢幕。");
                 document.getElementById('message').value = ''; 
-            }).catch((error) => {
-                console.error("寫入失敗", error);
-                alert("糟糕，發送失敗了。請檢查資料庫安全性規則是否設為測試模式！");
-            });
-        });
-    </script>
+            } else if (response.status === 429) {
+                alert("你點太快啦！請稍後再試。");
+            } else {
+                throw new Error('伺服器拒絕請求');
+            }
+        } catch (error) {
+            console.error("發送失敗", error);
+            alert("糟糕，連線到伺服器失敗了。");
+        } finally {
+            btn.disabled = false;
+            btn.innerText = '發送至大螢幕';
+        }
+    });
+</script>
 </body>
 </html>

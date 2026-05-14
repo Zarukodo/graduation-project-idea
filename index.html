@@ -415,6 +415,69 @@
                 overflow-y: auto;
             }
         }
+        /* --- 手機橫向螢幕 (Landscape) 專屬急救排版 V2 --- */
+        @media screen and (max-height: 500px) and (orientation: landscape) {
+            .reveal .slides > section, 
+            .reveal .slides > section > section {
+                padding-top: 30px !important; /* 再壓縮一點頂部空間 */
+            }
+            .qna-layout {
+                flex-direction: row !important; 
+                align-items: center !important; /* 確保左右兩組件水平對齊 */
+                gap: 30px !important;
+                margin-top: 0 !important;
+            }
+            
+            /* 修正左側 QR Code 卡片 */
+            .glass-proposer-card {
+                padding: 15px 25px !important;
+                flex-shrink: 0; /* 防止卡片被右邊擠壓變形 */
+            }
+
+            .glass-proposer-card p {
+                margin-bottom: 8px !important;
+                font-size: 0.7rem !important;
+            }
+
+            /* 🌟 核心修正：精準鎖定 QR Code 的白色方框容器，避免誤傷留言板 */
+            .qna-layout > .glass-proposer-card > div {
+                width: 25vh !important; 
+                height: 25vh !important; 
+                max-width: 140px !important; 
+                max-height: 140px !important;
+                padding: 8px !important;
+                background: #fff !important;
+                border-radius: 10px !important;
+                display: flex !important;         
+                align-items: center !important;    
+                justify-content: center !important; 
+                overflow: hidden !important;       
+                margin: 0 auto !important;
+            }
+
+            /* 確保連結與圖片乖乖待在裡面 */
+            .qna-layout > .glass-proposer-card > div a {
+                display: flex !important;
+                width: 100% !important;
+                height: 100% !important;
+                align-items: center !important;
+                justify-content: center !important;
+            }
+
+            .qna-layout > .glass-proposer-card > div img {
+                width: auto !important;            
+                height: auto !important;
+                max-width: 100% !important;        
+                max-height: 100% !important;       
+                object-fit: contain !important;    
+                display: block !important;
+            }
+
+            #feedback-wall {
+                height: 250px !important; 
+                width: 45vw !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -768,6 +831,14 @@
                 verticalMemory[idx.h] = idx.v;
             }
             updateLabel();
+            // 🌟 核心修復：每次滑到新頁面，強制滾回頂部並要求 Reveal 重新校正中心點
+            if (event.currentSlide) {
+                event.currentSlide.scrollTop = 0;
+            }
+            // 延遲 50 毫秒讓 DOM 狀態穩定後再重繪，避免視覺閃爍
+            setTimeout(() => {
+                revealInstance.layout();
+            }, 50);
             
             // --- 【樹狀圖終極修復核心區】 ---
             if (event.currentSlide.querySelector('#tree-chart') && window.myChart && window.chartBaseOption) {
@@ -866,7 +937,6 @@
         const handleSwipe = (e) => {
             if (typeof isDraggingProgress !== 'undefined' && isDraggingProgress) return;
             if (e.pointerType === 'mouse') return;
-            // 樹狀圖已經在前面攔截了，這裡加個雙重保險
             if (e.target.closest('#tree-chart')) return; 
 
             let endX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
@@ -877,33 +947,38 @@
             let absX = Math.abs(diffX);
             let absY = Math.abs(diffY);
 
-            // 【垂直滑動判定：專注處理卡片邊界與展開】
-            if (absY > absX && absY > 40) {
-                // 涵蓋內容小卡與 Q&A 留言板
-                const targetCard = e.target.closest('.content-card, #feedback-wall');
-                
-                if (targetCard) {
-                    const isAtTop = targetCard.scrollTop <= 0;
-                    // 使用 Math.ceil 處理手機端常見的小數點高度誤差，並給 2px 容錯
-                    const isAtBottom = Math.ceil(targetCard.scrollTop + targetCard.clientHeight) >= targetCard.scrollHeight - 2;
+            const indices = revealInstance.getIndices();
+            const isQAPage = (indices.h === (hSlidesCount - 1) && indices.v === 1);
 
-                    if (diffY > 0 && isAtBottom) {
-                        // 往上滑 (想看下面內容)，且卡片已經到底 -> 展開下一項！
-                        if (revealInstance.availableFragments().next) revealInstance.nextFragment();
-                        else revealInstance.down();
-                    } else if (diffY < 0 && isAtTop) {
-                        // 往下滑 (想看上面內容)，且卡片已經到頂 -> 收合上一項！
-                        if (revealInstance.availableFragments().prev) revealInstance.prevFragment();
-                        else revealInstance.up();
-                    }
-                } else {
-                    // 如果手指滑在沒有卡片的空白處，直接霸氣換頁
-                    if (diffY > 0) {
-                        if (revealInstance.availableFragments().next) revealInstance.nextFragment();
-                        else revealInstance.down();
-                    } else if (diffY < 0) {
-                        if (revealInstance.availableFragments().prev) revealInstance.prevFragment();
-                        else revealInstance.up();
+            // 【垂直滑動判定：精確打擊手勢衝突】
+            if (absY > absX && absY > 40) {
+                
+                // 🌟 核心升級：抓取手指目前按著的「可滾動容器」
+                // 可能是留言牆、內容卡片，或者在手機上可能滾動的整張 Slide 本身
+                const scrollableTarget = e.target.closest('#feedback-wall, .content-card') || revealInstance.getCurrentSlide();
+                
+                if (scrollableTarget) {
+                    const isAtTop = scrollableTarget.scrollTop <= 2;
+                    const isAtBottom = Math.ceil(scrollableTarget.scrollTop + scrollableTarget.clientHeight) >= scrollableTarget.scrollHeight - 2;
+
+                    if (diffY > 0) { 
+                        // 👆 往上滑 (想看下方內容)
+                        if (isAtBottom) {
+                            // 已經到底了，才交給 Reveal 執行下一動
+                            if (revealInstance.availableFragments().next) revealInstance.nextFragment();
+                            else if (!isQAPage) revealInstance.down(); // Q&A 是最後一頁，不執行 down
+                        } else {
+                            return; // 容器還沒到底，放行讓原生瀏覽器捲動！
+                        }
+                    } else if (diffY < 0) { 
+                        // 👇 往下滑 (想看上方內容 / 歷史留言)
+                        if (isAtTop) {
+                            // 已經到頂了，繼續拉代表想「收起」或「回上一頁」
+                            if (revealInstance.availableFragments().prev) revealInstance.prevFragment();
+                            else revealInstance.up(); // 在 Q&A 頁，這句會完美帶你回到 OUR VISION
+                        } else {
+                            return; // 容器還沒到頂，放行讓原生瀏覽器捲動留言！
+                        }
                     }
                 }
             }
@@ -911,25 +986,19 @@
             // 【水平滑動判定：一鍵全開/全收小卡】
             if (absX > absY * 2 && absX > 40) {
                 if (diffX > 0) {
-                    // 向左滑 (想看下一頁/展開)
                     if (revealInstance.availableFragments().next) {
-                        e.stopPropagation(); // 搶在 Reveal 換頁前攔截
-                        // 既然還有碎片沒開，用 while 迴圈一口氣全開！
+                        e.stopPropagation(); 
                         while (revealInstance.availableFragments().next) {
                             revealInstance.nextFragment();
                         }
                     }
-                    // 若沒有碎片了，腳本什麼都不做，完美放手給 Reveal 處理原生的下一頁過場
                 } else {
-                    // 向右滑 (想看上一頁/收起)
                     if (revealInstance.availableFragments().prev) {
                         e.stopPropagation(); 
-                        // 既然有碎片開著，用 while 迴圈一口氣全收！
                         while (revealInstance.availableFragments().prev) {
                             revealInstance.prevFragment();
                         }
                     }
-                    // 若碎片都收完了，放手讓 Reveal 處理原生的上一頁過場
                 }
             }
         };

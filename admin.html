@@ -48,6 +48,7 @@
                 const res = await fetch('https://graduation-project-idea.onrender.com/api/admin/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include', // 👈 救命解藥：告訴瀏覽器「允許接收並儲存跨網域的 Cookie」
                     body: JSON.stringify({ password })
                 });
                 

@@ -4,69 +4,133 @@
     <meta charset="UTF-8">
     <title>啟蒙導師 - 管理後台</title>
     <style>
-        body { font-family: sans-serif; background: #f4f4f9; padding: 20px; }
+        body { font-family: sans-serif; background: #f4f4f9; padding: 20px; margin: 0; }
+        .container { max-width: 800px; margin: 0 auto; display: none; } /* 預設隱藏，登入成功才秀 */
         .card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
         .hidden { opacity: 0.5; background: #eee; }
-        .pinned { border: 2px solid #a6b1e1; }
+        .pinned { border: 2px solid #a6b1e1; box-shadow: 0 0 10px rgba(166,177,225,0.5); }
         .btn-group button { margin-left: 5px; cursor: pointer; padding: 5px 10px; }
         .btn-reset { background: #ff4d4d; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin-bottom: 20px; cursor: pointer; }
+        
+        /* 🔒 登入滿版遮罩樣式 */
+        #login-overlay { position: fixed; top:0; left:0; width:100vw; height:100vh; background:#424874; display:flex; justify-content:center; align-items:center; z-index:9999; }
+        .login-box { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); text-align: center; }
+        .login-box input { width: 80%; padding: 10px; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; }
+        .login-box button { background: #a6b1e1; color: #424874; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
-    <h1>管理員控制台</h1>
-    <button class="btn-reset" onclick="resetSession()">一鍵清空所有留言 (慎用)</button>
-    <div id="admin-list">載入中...</div>
+
+    <div id="login-overlay">
+        <div class="login-box">
+            <h2 style="color: #424874; margin-top:0;">管理員驗證</h2>
+            <input type="password" id="adminPassword" placeholder="請輸入後台密碼">
+            <br>
+            <button onclick="submitLogin()">進入控制台</button>
+        </div>
+    </div>
+
+    <div class="container" id="main-content">
+        <h1>管理員控制台</h1>
+        <button class="btn-reset" onclick="resetSession()">一鍵清空所有留言 (慎用)</button>
+        <div id="admin-list">載入中...</div>
+    </div>
 
     <script>
         const API_BASE = 'https://graduation-project-idea.onrender.com/api/admin';
+        let updateTimer;
 
-        async function loadFeedbacks() {
-            const res = await fetch(`${API_BASE}/feedbacks`);
-            const data = await res.json();
-            const container = document.getElementById('admin-list');
-            container.innerHTML = data.map(item => `
-                <div class="card ${item.status === 'hidden' ? 'hidden' : ''} ${item.isPinned ? 'pinned' : ''}">
-                    <div>
-                        <strong>${item.author}</strong>: ${item.text}
-                        <div style="font-size: 0.8em; color: #666;">${new Date(item.timestamp).toLocaleString()}</div>
-                    </div>
-                    <div class="btn-group">
-                        <button onclick="togglePin('${item.id}', ${!item.isPinned})">${item.isPinned ? '取消釘選' : '釘選聚焦'}</button>
-                        <button onclick="toggleStatus('${item.id}', '${item.status === 'visible' ? 'hidden' : 'visible'}')">
-                            ${item.status === 'visible' ? '隱藏' : '取消隱藏'}
-                        </button>
-                    </div>
-                </div>
-            `).join('');
+        // 🚀 執行登入
+        async function submitLogin() {
+            const password = document.getElementById('adminPassword').value;
+            try {
+                // 注意：這裡改打我們剛剛新增的登入 API
+                const res = await fetch('https://graduation-project-idea.onrender.com/api/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    // 登入成功，隱藏遮罩，秀出控制台
+                    document.getElementById('login-overlay').style.display = 'none';
+                    document.getElementById('main-content').style.display = 'block';
+                    
+                    // 開始狂拉資料
+                    loadFeedbacks();
+                    updateTimer = setInterval(loadFeedbacks, 3000); 
+                } else {
+                    alert(data.error || '密碼錯誤');
+                }
+            } catch (err) {
+                alert('連線伺服器失敗');
+            }
         }
 
+        // 🚀 拉取留言列表 (會自動攜帶剛剛登入成功拿到的 Cookie)
+        async function loadFeedbacks() {
+            try {
+                const res = await fetch(`${API_BASE}/feedbacks`, { credentials: 'include' }); // 關鍵：強迫攜帶 Cookie
+                
+                if (res.status === 401 || res.status === 403) {
+                    // 如果手環過期或保鑣不認得，強制踢回登入畫面
+                    clearInterval(updateTimer);
+                    document.getElementById('login-overlay').style.display = 'flex';
+                    document.getElementById('main-content').style.display = 'none';
+                    return;
+                }
+                
+                const data = await res.json();
+                const container = document.getElementById('admin-list');
+                container.innerHTML = data.map(item => `
+                    <div class="card ${item.status === 'hidden' ? 'hidden' : ''} ${item.isPinned ? 'pinned' : ''}">
+                        <div>
+                            <strong>${item.author}</strong>: ${item.text}
+                            <div style="font-size: 0.8em; color: #666;">${new Date(item.timestamp).toLocaleString()}</div>
+                        </div>
+                        <div class="btn-group">
+                            <button onclick="togglePin('${item.id}', ${!item.isPinned})">${item.isPinned ? '取消釘選' : '釘選聚焦'}</button>
+                            <button onclick="toggleStatus('${item.id}', '${item.status === 'visible' ? 'hidden' : 'visible'}')">
+                                ${item.status === 'visible' ? '隱藏' : '取消隱藏'}
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error("讀取失敗", err);
+            }
+        }
+
+        // 🚀 切換隱藏狀態
         async function toggleStatus(id, newStatus) {
             await fetch(`${API_BASE}/feedback/${id}/status`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ status: newStatus })
             });
             loadFeedbacks();
         }
 
+        // 🚀 切換釘選聚焦
         async function togglePin(id, pinState) {
             await fetch(`${API_BASE}/feedback/${id}/pin`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ isPinned: pinState })
             });
             loadFeedbacks();
         }
 
+        // 🚀 一鍵重置
         async function resetSession() {
             if(confirm('確定要清空所有留言嗎？此動作無法復原！')) {
-                await fetch(`${API_BASE}/reset-session`, { method: 'POST' });
+                await fetch(`${API_BASE}/reset-session`, { method: 'POST', credentials: 'include' });
                 loadFeedbacks();
             }
         }
-
-        setInterval(loadFeedbacks, 3000); // 每 3 秒自動更新一次
-        loadFeedbacks();
     </script>
 </body>
 </html>

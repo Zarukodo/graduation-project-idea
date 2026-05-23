@@ -43,12 +43,16 @@ const feedbackLimiter = rateLimit({
 
 // --- 📌 驗證手環的守門員 (Middleware) ---
 const authMiddleware = (req, res, next) => {
-  // 從瀏覽器的 Cookie 裡面拿出我們發的手環 (token)
-  const token = req.cookies.admin_token;
+  // 1. 改從 Header 的 Authorization 欄位拿 Token，不要再找 Cookie 了
+  const authHeader = req.headers.authorization;
 
-  if (!token) {
+  // 2. 檢查有沒有帶 Token，格式應該要是 "Bearer <token>"
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: '拒絕存取：請先登入！' });
   }
+
+  // 3. 把 "Bearer " 切掉，只留下真正的 token 字串
+  const token = authHeader.split(' ')[1];
 
   try {
     // 驗算數學題！看看手環有沒有被竄改過
@@ -98,20 +102,17 @@ app.post('/api/admin/login', (req, res) => {
     // 密碼正確，簽發一個 2 小時有效的 JWT 權杖
     const token = jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: '2h' });
 
-    // 把權杖塞進 HttpOnly Cookie 安全口袋裡
-    res.cookie('admin_token', token, {
-      httpOnly: true, // 🛑 核心安全：前端 JavaScript 偷不走這顆 Cookie，杜絕 XSS
-      secure: true,   // 只在 https 下傳輸 (Render 自帶 https)
-      sameSite: 'none', // 允許跨網域傳輸 Cookie (Cloudflare Pages 連到 Render)
-      maxAge: 2 * 60 * 60 * 1000 // 2 小時後過期
+    // 🛑 核心改變：不要再用 res.cookie 了！
+    // 直接把 Token 放在 JSON 裡面回傳給前端，讓前端自己保管
+    return res.json({ 
+        success: true, 
+        message: '登入成功',
+        token: token // 👈 把手環直接交給前端
     });
-
-    return res.json({ success: true, message: '登入成功' });
   }
 
   res.status(401).json({ error: '密碼錯誤！' });
 });
-
 // --- 📌 管理員 API: 加上 authMiddleware 鎖起來！ ---
 
 // 取得所有留言 (加鎖)

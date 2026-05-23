@@ -40,25 +40,47 @@
         const API_BASE = 'https://graduation-project-idea.onrender.com/api/admin';
         let updateTimer;
 
+        // 🚀 幫 fetch 包裝一個小工具，自動把 Token 帶上，省得你每個 API 都要寫一遍 Header
+        async function fetchWithToken(url, options = {}) {
+            const token = sessionStorage.getItem('adminToken');
+            
+            const headers = {
+                'Content-Type': 'application/json',
+                ...options.headers,
+            };
+
+            // 如果有 Token，就塞進 Authorization 欄位
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            const config = {
+                ...options,
+                headers,
+                // credentials: 'include' 👈 這一行徹底刪掉，我們不用它了！
+            };
+
+            return fetch(url, config);
+        }
+
         // 🚀 執行登入
         async function submitLogin() {
             const password = document.getElementById('adminPassword').value;
             try {
-                // 注意：這裡改打我們剛剛新增的登入 API
-                const res = await fetch('https://graduation-project-idea.onrender.com/api/admin/login', {
+                const res = await fetch(`${API_BASE}/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include', // 👈 救命解藥：告訴瀏覽器「允許接收並儲存跨網域的 Cookie」
                     body: JSON.stringify({ password })
                 });
                 
                 const data = await res.json();
-                if (res.ok && data.success) {
-                    // 登入成功，隱藏遮罩，秀出控制台
+                if (res.ok && data.success && data.token) {
+                    // ✅ 關鍵：登入成功後，把 Token 存在 sessionStorage 裡
+                    sessionStorage.setItem('adminToken', data.token);
+                    
                     document.getElementById('login-overlay').style.display = 'none';
                     document.getElementById('main-content').style.display = 'block';
                     
-                    // 開始狂拉資料
                     loadFeedbacks();
                     updateTimer = setInterval(loadFeedbacks, 3000); 
                 } else {
@@ -69,14 +91,16 @@
             }
         }
 
-        // 🚀 拉取留言列表 (會自動攜帶剛剛登入成功拿到的 Cookie)
+        // 🚀 拉取留言列表
         async function loadFeedbacks() {
             try {
-                const res = await fetch(`${API_BASE}/feedbacks`, { credentials: 'include' }); // 關鍵：強迫攜帶 Cookie
+                // 使用我們剛剛寫好的小工具，它會自動帶上 Token
+                const res = await fetchWithToken(`${API_BASE}/feedbacks`); 
                 
                 if (res.status === 401 || res.status === 403) {
-                    // 如果手環過期或保鑣不認得，強制踢回登入畫面
+                    // Token 過期或無效，踢回登入畫面，並清空爛掉的 Token
                     clearInterval(updateTimer);
+                    sessionStorage.removeItem('adminToken');
                     document.getElementById('login-overlay').style.display = 'flex';
                     document.getElementById('main-content').style.display = 'none';
                     return;
@@ -105,10 +129,8 @@
 
         // 🚀 切換隱藏狀態
         async function toggleStatus(id, newStatus) {
-            await fetch(`${API_BASE}/feedback/${id}/status`, {
+            await fetchWithToken(`${API_BASE}/feedback/${id}/status`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify({ status: newStatus })
             });
             loadFeedbacks();
@@ -116,10 +138,8 @@
 
         // 🚀 切換釘選聚焦
         async function togglePin(id, pinState) {
-            await fetch(`${API_BASE}/feedback/${id}/pin`, {
+            await fetchWithToken(`${API_BASE}/feedback/${id}/pin`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify({ isPinned: pinState })
             });
             loadFeedbacks();
@@ -128,7 +148,7 @@
         // 🚀 一鍵重置
         async function resetSession() {
             if(confirm('確定要清空所有留言嗎？此動作無法復原！')) {
-                await fetch(`${API_BASE}/reset-session`, { method: 'POST', credentials: 'include' });
+                await fetchWithToken(`${API_BASE}/reset-session`, { method: 'POST' });
                 loadFeedbacks();
             }
         }
